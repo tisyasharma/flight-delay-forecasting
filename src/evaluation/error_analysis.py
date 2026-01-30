@@ -149,7 +149,6 @@ class ErrorAnalyzer:
 
         if save_path:
             plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        plt.close()
 
         return fig
 
@@ -178,7 +177,6 @@ class ErrorAnalyzer:
 
         if save_path:
             plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        plt.close()
 
         return fig
 
@@ -209,7 +207,6 @@ class ErrorAnalyzer:
 
         if save_path:
             plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        plt.close()
 
         return fig
 
@@ -256,7 +253,6 @@ class ErrorAnalyzer:
 
         if save_path:
             plt.savefig(save_path, dpi=150, bbox_inches="tight")
-        plt.close()
 
         return fig
 
@@ -266,7 +262,7 @@ class ErrorAnalyzer:
             output_dir = Path(output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
 
-        lines = ["Error Analysis Report", "=" * 50]
+        lines = ["Error Analysis Report", ""]
 
         lines.append("\nOVERALL METRICS:")
         overall = self.overall_metrics()

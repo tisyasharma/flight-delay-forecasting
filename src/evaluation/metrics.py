@@ -65,7 +65,7 @@ def calculate_delay_metrics(y_true: np.ndarray, y_pred: np.ndarray,
     Delay-specific metrics for model evaluation.
 
     Primary: MAE, RMSE, within-15 (% of predictions within 15 min of actual)
-    Secondary: directional accuracy, percentile errors
+    Secondary: directional accuracy, median error, R²
     """
     y_true = np.array(y_true).flatten()
     y_pred = np.array(y_pred).flatten()
@@ -77,8 +77,7 @@ def calculate_delay_metrics(y_true: np.ndarray, y_pred: np.ndarray,
     if len(y_true) == 0:
         return {
             "mae": None, "within_15": None, "rmse": None,
-            "mape": None, "median_ae": None, "directional": None, "r2": None,
-            "p90": None, "p95": None
+            "mape": None, "median_ae": None, "directional": None, "r2": None
         }
 
     errors = y_pred - y_true
@@ -106,10 +105,6 @@ def calculate_delay_metrics(y_true: np.ndarray, y_pred: np.ndarray,
     ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
     r2_val = float(1 - ss_res / ss_tot) if ss_tot > 0 else 0.0
 
-    # tail errors
-    p90 = float(np.percentile(abs_errors, 90))
-    p95 = float(np.percentile(abs_errors, 95))
-
     return {
         "mae": mae_val,
         "within_15": within_15,
@@ -117,9 +112,7 @@ def calculate_delay_metrics(y_true: np.ndarray, y_pred: np.ndarray,
         "mape": mape_val,
         "median_ae": median_ae,
         "directional": directional,
-        "r2": r2_val,
-        "p90": p90,
-        "p95": p95
+        "r2": r2_val
     }
 
 

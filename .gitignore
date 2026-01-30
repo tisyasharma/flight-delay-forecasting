@@ -9,3 +9,12 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Model artifacts
+trained_models/
+models/
+
+# Environment
+venv/
+env/
+.env

@@ -7,7 +7,7 @@ TRAIN_END = "2024-01-01"
 VAL_END = "2024-07-01"
 TEST_START = "2024-07-01"
 
-XGBOOST_FEATURES = [
+TABULAR_FEATURES = [
     # Calendar (17)
     'day_of_week', 'day_of_month', 'month', 'quarter', 'week_of_year',
     'is_weekend', 'is_month_start', 'is_month_end',
@@ -39,6 +39,8 @@ XGBOOST_FEATURES = [
     'total_precip', 'total_snowfall', 'max_wind',
     'weather_severity_lag_1', 'weather_severity_lag_3', 'weather_severity_lag_7'
 ]
+
+XGBOOST_FEATURES = TABULAR_FEATURES
 
 SEQUENCE_MODEL_FEATURES = [
     # target history in the sequence, model sees [t-28 to t-1] and predicts t

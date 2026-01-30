@@ -8,9 +8,9 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
-RAW_DATA_DIR = Path(__file__).parent.parent.parent / "data" / "raw"
-PROCESSED_DATA_DIR = Path(__file__).parent.parent.parent / "data" / "processed"
-WEATHER_DATA_DIR = Path(__file__).parent.parent.parent / "data" / "weather"
+RAW_DATA_DIR = Path(__file__).parent.parent / "data" / "raw"
+PROCESSED_DATA_DIR = Path(__file__).parent.parent / "data" / "processed"
+WEATHER_DATA_DIR = Path(__file__).parent.parent / "data" / "weather"
 PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 REQUIRED_COLS = [

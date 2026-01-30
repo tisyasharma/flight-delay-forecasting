@@ -18,3 +18,12 @@ models/
 venv/
 env/
 .env
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+
+# Generated outputs
+outputs/

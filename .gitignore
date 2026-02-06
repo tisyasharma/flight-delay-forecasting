@@ -12,7 +12,7 @@ __pycache__/
 
 # Model artifacts
 trained_models/
-models/
+/models/
 
 # Environment
 venv/
@@ -27,3 +27,7 @@ env/
 
 # Generated outputs
 outputs/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/

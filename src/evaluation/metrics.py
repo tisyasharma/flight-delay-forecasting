@@ -1,27 +1,20 @@
-"""
-Evaluation metrics for delay prediction models.
-"""
-
-from typing import Dict
-
 import numpy as np
 
 
-def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    """Root mean squared error - penalizes large errors more than MAE."""
+def rmse(y_true, y_pred):
+    """Root mean squared error."""
     return np.sqrt(np.mean((y_true - y_pred) ** 2))
 
 
-def mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    """Mean absolute error in the same units as the target."""
+def mae(y_true, y_pred):
+    """Mean absolute error."""
     return np.mean(np.abs(y_true - y_pred))
 
 
-def mape(y_true: np.ndarray, y_pred: np.ndarray, epsilon: float = 1.0) -> float:
+def mape(y_true, y_pred, epsilon=1.0):
     """
-    Mean absolute percentage error.
-    Skips values where |actual| < epsilon since MAPE blows up near zero.
-    Returns NaN if more than half the values are filtered out.
+    Skips values where actual is near zero since MAPE blows up there.
+    Returns NaN if too many values get filtered out.
     """
     valid_mask = np.abs(y_true) > epsilon
 
@@ -31,8 +24,8 @@ def mape(y_true: np.ndarray, y_pred: np.ndarray, epsilon: float = 1.0) -> float:
     return np.mean(np.abs((y_true[valid_mask] - y_pred[valid_mask]) / y_true[valid_mask])) * 100
 
 
-def r_squared(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    """R-squared - fraction of variance explained by the model."""
+def r_squared(y_true, y_pred):
+    """Coefficient of determination, returns 0 if total variance is zero."""
     ss_res = np.sum((y_true - y_pred) ** 2)
     ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
     if ss_tot == 0:
@@ -40,12 +33,11 @@ def r_squared(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return 1 - (ss_res / ss_tot)
 
 
-def calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
-    """Standard regression metrics."""
+def calculate_metrics(y_true, y_pred):
+    """Basic regression metrics (RMSE, MAE, MAPE, R2)."""
     y_true = np.array(y_true).flatten()
     y_pred = np.array(y_pred).flatten()
 
-    # drop NaN pairs
     mask = ~(np.isnan(y_true) | np.isnan(y_pred))
     y_true = y_true[mask]
     y_pred = y_pred[mask]
@@ -59,14 +51,8 @@ def calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float
     }
 
 
-def calculate_delay_metrics(y_true: np.ndarray, y_pred: np.ndarray,
-                            delay_threshold: float = 15) -> Dict[str, float]:
-    """
-    Delay-specific metrics for model evaluation.
-
-    Primary: MAE, RMSE, within-15 (% of predictions within 15 min of actual)
-    Secondary: directional accuracy, median error, R²
-    """
+def calculate_delay_metrics(y_true, y_pred, delay_threshold=15):
+    """MAE, RMSE, hit rate (within 15 min), threshold accuracy, R-squared."""
     y_true = np.array(y_true).flatten()
     y_pred = np.array(y_pred).flatten()
 
@@ -77,33 +63,23 @@ def calculate_delay_metrics(y_true: np.ndarray, y_pred: np.ndarray,
     if len(y_true) == 0:
         return {
             "mae": None, "within_15": None, "rmse": None,
-            "mape": None, "median_ae": None, "directional": None, "r2": None
+            "mape": None, "median_ae": None, "threshold_acc": None, "r2": None
         }
 
-    errors = y_pred - y_true
-    abs_errors = np.abs(errors)
+    abs_errors = np.abs(y_pred - y_true)
 
-    mae_val = float(np.mean(abs_errors))
-    within_15 = float(np.mean(abs_errors <= 15) * 100)
-    rmse_val = float(np.sqrt(np.mean(errors ** 2)))
+    mae_val = float(mae(y_true, y_pred))
+    rmse_val = float(rmse(y_true, y_pred))
+    mape_val = mape(y_true, y_pred)
+    mape_val = float(mape_val) if mape_val is not None and not np.isnan(mape_val) else None
+    r2_val = float(r_squared(y_true, y_pred))
 
-    # mape: skip near-zero actuals (|actual| < 1 min) to avoid division issues
-    valid_mask = np.abs(y_true) > 1.0
-    if np.sum(valid_mask) > len(y_true) * 0.5:
-        mape_val = float(np.mean(np.abs(errors[valid_mask] / y_true[valid_mask])) * 100)
-    else:
-        mape_val = None
-
+    within_15 = float(np.mean(abs_errors <= delay_threshold) * 100)
     median_ae = float(np.median(abs_errors))
 
-    # directional: did we correctly classify as delayed (> threshold) or not?
     actual_delayed = y_true > delay_threshold
     pred_delayed = y_pred > delay_threshold
-    directional = float(np.mean(actual_delayed == pred_delayed) * 100)
-
-    ss_res = np.sum(errors ** 2)
-    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
-    r2_val = float(1 - ss_res / ss_tot) if ss_tot > 0 else 0.0
+    threshold_acc = float(np.mean(actual_delayed == pred_delayed) * 100)
 
     return {
         "mae": mae_val,
@@ -111,14 +87,13 @@ def calculate_delay_metrics(y_true: np.ndarray, y_pred: np.ndarray,
         "rmse": rmse_val,
         "mape": mape_val,
         "median_ae": median_ae,
-        "directional": directional,
+        "threshold_acc": threshold_acc,
         "r2": r2_val
     }
 
 
-def calculate_metrics_by_segment(y_true: np.ndarray, y_pred: np.ndarray,
-                                  segments: np.ndarray) -> Dict[str, Dict[str, float]]:
-    """Calculate metrics separately for each segment value."""
+def calculate_metrics_by_segment(y_true, y_pred, segments):
+    """Computes metrics separately for each unique segment value."""
     results = {}
 
     for segment in np.unique(segments):

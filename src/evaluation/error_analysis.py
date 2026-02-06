@@ -1,40 +1,25 @@
-"""
-Error analysis for understanding where the model fails.
-Breaks down errors by route, time period, day type, and season.
-"""
-
 from pathlib import Path
-from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from src.config import COVID_START, COVID_PEAK_END
 from .metrics import calculate_metrics, calculate_metrics_by_segment
 
 
 class ErrorAnalyzer:
-    """
-    Analyzes prediction errors across different segments.
-    Helps identify patterns in where the model struggles.
-    """
+    """Breaks down forecast errors by route, time period, season, etc."""
 
-    def __init__(self, df: pd.DataFrame, y_true: np.ndarray, y_pred: np.ndarray):
-        """
-        Args:
-            df: DataFrame with date and route columns
-            y_true: actual delay values
-            y_pred: predicted delay values
-        """
+    def __init__(self, df, y_true, y_pred):
         self.df = df.copy()
         self.df["y_true"] = y_true
         self.df["y_pred"] = y_pred
         self.df["error"] = y_pred - y_true
         self.df["abs_error"] = np.abs(self.df["error"])
 
-        # pct_error can blow up when actual is near zero, so we cap it
-        # this prevents a single near-zero actual from skewing MAPE calculations
+        # pct error blows up near zero, so exclude those
         with np.errstate(divide='ignore', invalid='ignore'):
             pct = self.df["error"] / self.df["y_true"] * 100
             pct = np.where(np.abs(self.df["y_true"]) < 1, np.nan, pct)
@@ -43,13 +28,11 @@ class ErrorAnalyzer:
         self._add_segments()
 
     def _add_segments(self):
-        """Add columns for grouping errors by time characteristics."""
+        """Adds time period, day type, and season columns for slicing."""
         self.df["date"] = pd.to_datetime(self.df["date"])
 
-        # simplified COVID periods for visualization
-        # (the feature engineering uses more granular periods)
-        covid_start = pd.Timestamp("2020-03-01")
-        covid_end = pd.Timestamp("2021-06-01")
+        covid_start = pd.Timestamp(COVID_START)
+        covid_end = pd.Timestamp(COVID_PEAK_END)
 
         self.df["time_period"] = "Post-COVID"
         self.df.loc[self.df["date"] < covid_start, "time_period"] = "Pre-COVID"
@@ -69,14 +52,14 @@ class ErrorAnalyzer:
             4: "Q4 (Fall)"
         })
 
-    def overall_metrics(self) -> Dict[str, float]:
-        """Overall metrics across all samples."""
+    def overall_metrics(self):
+        """Returns aggregate metrics across all data."""
         return calculate_metrics(
             self.df["y_true"].values,
             self.df["y_pred"].values
         )
 
-    def metrics_by_route(self) -> pd.DataFrame:
+    def metrics_by_route(self):
         """Metrics broken down by route."""
         results = []
         for route in self.df["route"].unique():
@@ -90,8 +73,8 @@ class ErrorAnalyzer:
 
         return pd.DataFrame(results).set_index("route")
 
-    def metrics_by_time_period(self) -> pd.DataFrame:
-        """Metrics by pre-COVID, COVID, post-COVID."""
+    def metrics_by_time_period(self):
+        """Metrics split by pre-covid, covid, and post-covid."""
         return pd.DataFrame(
             calculate_metrics_by_segment(
                 self.df["y_true"].values,
@@ -100,8 +83,8 @@ class ErrorAnalyzer:
             )
         ).T
 
-    def metrics_by_day_type(self) -> pd.DataFrame:
-        """Metrics by weekday vs weekend."""
+    def metrics_by_day_type(self):
+        """Metrics split by weekday vs weekend."""
         return pd.DataFrame(
             calculate_metrics_by_segment(
                 self.df["y_true"].values,
@@ -110,8 +93,8 @@ class ErrorAnalyzer:
             )
         ).T
 
-    def metrics_by_season(self) -> pd.DataFrame:
-        """Metrics by quarter/season."""
+    def metrics_by_season(self):
+        """Metrics split by quarter/season."""
         return pd.DataFrame(
             calculate_metrics_by_segment(
                 self.df["y_true"].values,
@@ -120,15 +103,14 @@ class ErrorAnalyzer:
             )
         ).T
 
-    def worst_predictions(self, n: int = 10) -> pd.DataFrame:
-        """Get the N predictions with highest absolute error."""
+    def worst_forecasts(self, n=10):
+        """Returns the n predictions with the highest absolute error."""
         return self.df.nlargest(n, "abs_error")[
             ["date", "route", "y_true", "y_pred", "error"]
         ]
 
-    def plot_residuals_over_time(self, figsize: Tuple[int, int] = (14, 5),
-                                  save_path: str = None):
-        """Plot residuals over time to check for drift."""
+    def plot_residuals_over_time(self, figsize=(14, 5), save_path=None):
+        """Scatter of daily mean error with 30-day rolling average line."""
         fig, ax = plt.subplots(figsize=figsize)
 
         daily_error = self.df.groupby("date")["error"].mean()
@@ -152,9 +134,8 @@ class ErrorAnalyzer:
 
         return fig
 
-    def plot_error_by_segment(self, segment_col: str, figsize: Tuple[int, int] = (10, 6),
-                               save_path: str = None):
-        """Box plot of error distribution for each segment."""
+    def plot_error_by_segment(self, segment_col, figsize=(10, 6), save_path=None):
+        """Box plot of errors grouped by the given segment column."""
         fig, ax = plt.subplots(figsize=figsize)
 
         order = self.df.groupby(segment_col)["abs_error"].median().sort_values().index
@@ -180,9 +161,8 @@ class ErrorAnalyzer:
 
         return fig
 
-    def plot_predicted_vs_actual(self, figsize: Tuple[int, int] = (8, 8),
-                                  save_path: str = None):
-        """Scatter plot of predicted vs actual values."""
+    def plot_predicted_vs_actual(self, figsize=(8, 8), save_path=None):
+        """Scatter plot of predicted vs actual with a perfect prediction line."""
         fig, ax = plt.subplots(figsize=figsize)
 
         ax.scatter(
@@ -192,15 +172,14 @@ class ErrorAnalyzer:
             s=10
         )
 
-        # diagonal line shows perfect predictions
         min_val = min(self.df["y_true"].min(), self.df["y_pred"].min())
         max_val = max(self.df["y_true"].max(), self.df["y_pred"].max())
         ax.plot([min_val, max_val], [min_val, max_val], "r--", linewidth=2,
                 label="Perfect prediction")
 
         ax.set_xlabel("Actual Delay (min)")
-        ax.set_ylabel("Predicted Delay (min)")
-        ax.set_title("Predicted vs Actual")
+        ax.set_ylabel("Forecasted Avg Delay (min)")
+        ax.set_title("Forecasted vs Actual Daily Avg Delay")
         ax.legend()
 
         plt.tight_layout()
@@ -210,10 +189,8 @@ class ErrorAnalyzer:
 
         return fig
 
-    def plot_error_heatmap(self, figsize: Tuple[int, int] = (12, 8),
-                           save_path: str = None):
-        """Heatmap of MAE by route and season."""
-        # using MAE instead of MAPE since MAPE is unstable for small actuals
+    def plot_error_heatmap(self, figsize=(12, 8), save_path=None):
+        """MAE heatmap by route x season."""
         pivot_data = []
 
         for route in self.df["route"].unique():
@@ -256,8 +233,8 @@ class ErrorAnalyzer:
 
         return fig
 
-    def generate_report(self, output_dir: str = None) -> str:
-        """Generate text report and save plots."""
+    def generate_report(self, output_dir=None):
+        """Writes a text report and saves all plots to output_dir if given."""
         if output_dir:
             output_dir = Path(output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -284,8 +261,8 @@ class ErrorAnalyzer:
         season_metrics = self.metrics_by_season()
         lines.append(season_metrics[["rmse", "mae", "mape"]].round(2).to_string())
 
-        lines.append("\n\nWORST PREDICTIONS:")
-        worst = self.worst_predictions(10)
+        lines.append("\n\nWORST FORECASTS:")
+        worst = self.worst_forecasts(10)
         lines.append(worst.to_string())
 
         report_text = "\n".join(lines)
@@ -294,10 +271,15 @@ class ErrorAnalyzer:
             with open(output_dir / "error_analysis_report.txt", "w") as f:
                 f.write(report_text)
 
-            self.plot_residuals_over_time(save_path=output_dir / "residuals_over_time.png")
-            self.plot_error_by_segment("route", save_path=output_dir / "error_by_route.png")
-            self.plot_error_by_segment("season", save_path=output_dir / "error_by_season.png")
-            self.plot_predicted_vs_actual(save_path=output_dir / "predicted_vs_actual.png")
-            self.plot_error_heatmap(save_path=output_dir / "error_heatmap.png")
+            for plot_fn, args, filename in [
+                (self.plot_residuals_over_time, {}, "residuals_over_time.png"),
+                (self.plot_error_by_segment, {"segment_col": "route"}, "error_by_route.png"),
+                (self.plot_error_by_segment, {"segment_col": "season"}, "error_by_season.png"),
+                (self.plot_predicted_vs_actual, {}, "predicted_vs_actual.png"),
+                (self.plot_error_heatmap, {}, "error_heatmap.png"),
+            ]:
+                fig = plot_fn(**args, save_path=output_dir / filename)
+                if fig is not None:
+                    plt.close(fig)
 
         return report_text

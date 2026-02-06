@@ -1,41 +1,11 @@
-"""
-LSTM with attention for flight delay prediction.
-The attention layer lets the model weight which days in the 28-day window
-matter most. In practice, recent days get the highest weights.
-"""
-
 import numpy as np
+import optuna
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
-
-
-class FlightDelayDataset(Dataset):
-    """
-    Creates sliding windows over the time series. For sequence_length=28,
-    each sample has X from days [t-28, t-1] and y at day t.
-    """
-
-    def __init__(self, features, targets, sequence_length=28):
-        self.features = torch.tensor(features, dtype=torch.float32)
-        self.targets = torch.tensor(targets, dtype=torch.float32)
-        self.sequence_length = sequence_length
-
-    def __len__(self):
-        return len(self.features) - self.sequence_length
-
-    def __getitem__(self, idx):
-        x = self.features[idx:idx + self.sequence_length]
-        y = self.targets[idx + self.sequence_length]
-        return x, y
 
 
 class MultiHeadTemporalAttention(nn.Module):
-    """
-    Multi-head attention over the temporal dimension. Each head can focus on
-    different parts of the sequence. Single-head works fine for this dataset
-    but I kept the multi-head option in case I wanted to experiment.
-    """
+    """Multi-head attention over the temporal dimension."""
 
     def __init__(self, hidden_size, num_heads=4, dropout=0.1):
         super().__init__()
@@ -45,7 +15,6 @@ class MultiHeadTemporalAttention(nn.Module):
 
         assert hidden_size % num_heads == 0, "hidden_size must be divisible by num_heads"
 
-        # each head scores timesteps independently
         self.heads = nn.ModuleList([
             nn.Sequential(
                 nn.Linear(hidden_size, self.head_dim),
@@ -58,14 +27,7 @@ class MultiHeadTemporalAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, lstm_output):
-        """
-        Args:
-            lstm_output: (batch, seq_len, hidden_size) from LSTM
-
-        Returns:
-            context: weighted combination of timesteps (batch, hidden_size)
-            attention_weights: per-head weights (batch, num_heads, seq_len)
-        """
+        """Computes attention-weighted context vector from LSTM hidden states."""
         head_contexts = []
         all_weights = []
 
@@ -84,18 +46,15 @@ class MultiHeadTemporalAttention(nn.Module):
         return context, torch.stack(all_weights, dim=1)
 
     def get_attention_weights(self, lstm_output):
-        """Returns attention weights for visualization."""
+        """Returns the attention weight matrix without computing gradients."""
         with torch.no_grad():
             _, weights = self.forward(lstm_output)
         return weights
 
 
-class FlightDelayLSTM(nn.Module):
+class RouteDelayLSTM(nn.Module):
     """
-    LSTM with attention for delay prediction.
-    The LSTM processes the sequence, attention collapses it to a single context
-    vector, and a FC head outputs the prediction. Attention weights can be
-    extracted for visualization.
+    Takes 28-day sequence, attention collapses to context vector, FC head outputs forecast.
     """
 
     def __init__(self, input_size, hidden_size=64, num_layers=2, dropout=0.3,
@@ -107,7 +66,6 @@ class FlightDelayLSTM(nn.Module):
         self.num_attention_heads = num_attention_heads
         self.use_multi_head = num_attention_heads > 1
 
-        # dropout only between LSTM layers, not after the last one
         self.lstm = nn.LSTM(
             input_size=input_size,
             hidden_size=hidden_size,
@@ -123,7 +81,6 @@ class FlightDelayLSTM(nn.Module):
                 dropout=0.1
             )
         else:
-            # single-head: score each timestep, softmax, weighted sum
             self.attention = nn.Sequential(
                 nn.Linear(hidden_size, hidden_size // 2),
                 nn.Tanh(),
@@ -138,13 +95,6 @@ class FlightDelayLSTM(nn.Module):
         )
 
     def forward(self, x):
-        """
-        Args:
-            x: (batch, seq_len, features) - 28 days of features
-
-        Returns:
-            predictions: (batch,) - predicted delay
-        """
         lstm_out, _ = self.lstm(x)
 
         if self.use_multi_head:
@@ -158,7 +108,6 @@ class FlightDelayLSTM(nn.Module):
         return output.squeeze(-1)
 
     def get_attention_weights(self, x):
-        """Pull out attention weights so I can visualize which days the model focuses on."""
         with torch.no_grad():
             lstm_out, _ = self.lstm(x)
             if self.use_multi_head:
@@ -170,13 +119,12 @@ class FlightDelayLSTM(nn.Module):
 
 
 class LSTMTrainer:
-    """
-    Handles training loop, early stopping, and checkpointing.
-    AdamW with ReduceLROnPlateau (halves LR when val loss plateaus).
-    """
 
     def __init__(self, model, learning_rate=0.001, device=None):
-        self.device = device or torch.device("mps")
+        if device is None:
+            from src.config import get_device
+            device = get_device()
+        self.device = device
         self.model = model.to(self.device)
 
         self.optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
@@ -187,7 +135,6 @@ class LSTMTrainer:
         self.history = {"train_loss": [], "val_loss": []}
 
     def train_epoch(self, train_loader):
-        """Train for one epoch."""
         self.model.train()
         total_loss = 0
         n_batches = 0
@@ -201,7 +148,6 @@ class LSTMTrainer:
             loss = self.criterion(predictions, y_batch)
             loss.backward()
 
-            # clip gradients so they don't blow up
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
 
             self.optimizer.step()
@@ -212,7 +158,6 @@ class LSTMTrainer:
         return total_loss / n_batches
 
     def validate(self, val_loader):
-        """Evaluate on validation set."""
         self.model.eval()
         total_loss = 0
         n_batches = 0
@@ -231,10 +176,9 @@ class LSTMTrainer:
         return total_loss / n_batches
 
     def fit(self, train_loader, val_loader, epochs=50, early_stopping_patience=10,
-            verbose=True):
-        """
-        Training loop with early stopping. Saves the best model by validation
-        loss and restores it at the end.
+            verbose=True, trial=None):
+        """Trains with early stopping, restores best weights when done.
+        Optionally accepts an Optuna trial for epoch-level pruning.
         """
         best_val_loss = float("inf")
         patience_counter = 0
@@ -249,10 +193,15 @@ class LSTMTrainer:
 
             self.scheduler.step(val_loss)
 
+            if trial is not None:
+                trial.report(val_loss, epoch)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 patience_counter = 0
-                best_model_state = self.model.state_dict().copy()
+                best_model_state = {k: v.clone() for k, v in self.model.state_dict().items()}
             else:
                 patience_counter += 1
 
@@ -271,7 +220,6 @@ class LSTMTrainer:
         return self.history
 
     def predict(self, data_loader):
-        """Generate predictions"""
         self.model.eval()
         predictions = []
 
@@ -284,7 +232,7 @@ class LSTMTrainer:
         return np.array(predictions)
 
     def save(self, path):
-        """Save model checkpoint"""
+        # checkpoint includes model weights, optimizer, and loss history
         torch.save({
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
@@ -292,33 +240,27 @@ class LSTMTrainer:
         }, path)
 
     def load(self, path):
-        """Load model checkpoint"""
-        checkpoint = torch.load(path, map_location=self.device)
+        # restores model and optimizer from checkpoint file
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.history = checkpoint["history"]
 
 
 if __name__ == "__main__":
-    input_size = 30
+    input_size = 22
     batch_size = 16
     seq_length = 28
     x = torch.randn(batch_size, seq_length, input_size)
 
-    print("Testing single-head attention:")
-    model_single = FlightDelayLSTM(input_size=input_size, hidden_size=64, num_layers=2)
+    model_single = RouteDelayLSTM(input_size=input_size, hidden_size=64, num_layers=2)
     output = model_single(x)
     attn = model_single.get_attention_weights(x)
-    print(f"  Input shape: {x.shape}")
-    print(f"  Output shape: {output.shape}")
-    print(f"  Attention weights shape: {attn.shape}")
+    print(f"Single-head: input {x.shape}, output {output.shape}, attn {attn.shape}")
 
-    print("\nTesting multi-head attention (4 heads):")
-    model_multi = FlightDelayLSTM(
+    model_multi = RouteDelayLSTM(
         input_size=input_size, hidden_size=64, num_layers=2, num_attention_heads=4
     )
     output = model_multi(x)
     attn = model_multi.get_attention_weights(x)
-    print(f"  Input shape: {x.shape}")
-    print(f"  Output shape: {output.shape}")
-    print(f"  Attention weights shape: {attn.shape}")
+    print(f"Multi-head:  input {x.shape}, output {output.shape}, attn {attn.shape}")

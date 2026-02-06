@@ -1,25 +1,15 @@
-"""
-TCN (Temporal Convolutional Network) for flight delay prediction.
-Uses dilated causal convolutions instead of recurrence, which makes it
-fully parallelizable. The receptive field grows exponentially with depth.
-"""
-
 import numpy as np
+import optuna
 import torch
 import torch.nn as nn
 
 
 class TemporalBlock(nn.Module):
-    """
-    One block: dilated causal conv -> batch norm -> residual connection.
-    Left-padded and right-trimmed so the output at time t only sees inputs <= t.
-    Higher dilation = wider gaps between kernel positions = sees further back.
-    """
+    """Dilated causal conv block with residual connection. Left-padded to stay causal."""
 
     def __init__(self, in_channels, out_channels, kernel_size, dilation, dropout=0.2):
         super().__init__()
 
-        # left-padding to maintain sequence length
         padding = (kernel_size - 1) * dilation
 
         self.conv1 = nn.Conv1d(
@@ -37,7 +27,7 @@ class TemporalBlock(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.relu = nn.ReLU()
 
-        # 1x1 conv to match channel dimensions for the residual connection
+        # 1x1 conv if channels don't match for residual
         self.downsample = (
             nn.Conv1d(in_channels, out_channels, 1)
             if in_channels != out_channels else None
@@ -46,12 +36,9 @@ class TemporalBlock(nn.Module):
         self.padding = padding
 
     def forward(self, x):
-        """
-        Args:
-            x: (batch, channels, seq_len)
-        """
+        """Two dilated convs with residual connection, trimmed to stay causal."""
         out = self.conv1(x)
-        # trim the right side to remove "future" information from right-padding
+        # trim right side to stay causal
         out = out[:, :, :-self.padding] if self.padding > 0 else out
         out = self.bn1(out)
         out = self.relu(out)
@@ -68,14 +55,10 @@ class TemporalBlock(nn.Module):
         return self.relu(out + res)
 
 
-class FlightDelayTCN(nn.Module):
+class RouteDelayTCN(nn.Module):
     """
-    Temporal Convolutional Network for delay prediction.
-
-    Stacks temporal blocks with exponentially increasing dilation (1, 2, 4, ...),
-    so the receptive field grows exponentially with depth. With 3 blocks and
-    kernel_size=3, the receptive field is 29 days -- just enough for 28-day sequences.
-    Global average pooling collapses the sequence, then a small FC head predicts.
+    Stacked dilated causal convolutions.
+    Dilations [1, 2, 4] with kernel 3 gives a receptive field of 29 timesteps.
     """
 
     def __init__(self, input_size, num_channels=None, kernel_size=3, dropout=0.2):
@@ -106,27 +89,14 @@ class FlightDelayTCN(nn.Module):
             nn.Linear(32, 1)
         )
 
-        self.receptive_field = self._calculate_receptive_field(
-            num_levels, kernel_size
-        )
-
-    def _calculate_receptive_field(self, num_levels, kernel_size):
-        """
-        For 3 levels with kernel=3: RF = 1 + 2*(3-1)*(1+2+4) = 29 days.
-        If RF < sequence_length, the model can't use the full input history.
-        """
+        # RF = 1 + 2*(k-1)*sum(dilations), should be >= sequence length
         rf = 1
         for i in range(num_levels):
-            dilation = 2 ** i
-            rf += 2 * (kernel_size - 1) * dilation
-        return rf
+            rf += 2 * (kernel_size - 1) * (2 ** i)
+        self.receptive_field = rf
 
     def forward(self, x):
-        """
-        Args:
-            x: (batch, seq_len, features) - same input format as the LSTM
-        """
-        # Conv1d expects (batch, channels, seq_len)
+        # Conv1d wants (batch, channels, seq_len)
         x = x.transpose(1, 2)
 
         out = self.tcn(x)
@@ -135,27 +105,14 @@ class FlightDelayTCN(nn.Module):
 
         return out.squeeze(-1)
 
-    def get_intermediate_outputs(self, x):
-        """Get outputs from each temporal block for debugging."""
-        x = x.transpose(1, 2)
-        outputs = []
-
-        current = x
-        for layer in self.tcn:
-            current = layer(current)
-            outputs.append(current)
-
-        return outputs
-
 
 class TCNTrainer:
-    """
-    Training wrapper for TCN. Same idea as LSTMTrainer but uses cosine
-    annealing with warm restarts for the LR schedule.
-    """
 
     def __init__(self, model, learning_rate=0.001, device=None):
-        self.device = device or torch.device("mps")
+        if device is None:
+            from src.config import get_device
+            device = get_device()
+        self.device = device
         self.model = model.to(self.device)
 
         self.optimizer = torch.optim.AdamW(
@@ -168,7 +125,6 @@ class TCNTrainer:
         self.history = {"train_loss": [], "val_loss": []}
 
     def train_epoch(self, train_loader):
-        """Train for one epoch."""
         self.model.train()
         total_loss = 0
         n_batches = 0
@@ -194,7 +150,6 @@ class TCNTrainer:
         return total_loss / n_batches
 
     def validate(self, val_loader):
-        """Evaluate on validation set."""
         self.model.eval()
         total_loss = 0
         n_batches = 0
@@ -213,8 +168,10 @@ class TCNTrainer:
         return total_loss / n_batches
 
     def fit(self, train_loader, val_loader, epochs=50, early_stopping_patience=10,
-            verbose=True):
-        """Training loop with early stopping."""
+            verbose=True, trial=None):
+        """Trains with early stopping, restores best weights when done.
+        Optionally accepts an Optuna trial for epoch-level pruning.
+        """
         best_val_loss = float("inf")
         patience_counter = 0
         best_model_state = None
@@ -226,10 +183,15 @@ class TCNTrainer:
             self.history["train_loss"].append(train_loss)
             self.history["val_loss"].append(val_loss)
 
+            if trial is not None:
+                trial.report(val_loss, epoch)
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 patience_counter = 0
-                best_model_state = self.model.state_dict().copy()
+                best_model_state = {k: v.clone() for k, v in self.model.state_dict().items()}
             else:
                 patience_counter += 1
 
@@ -248,7 +210,6 @@ class TCNTrainer:
         return self.history
 
     def predict(self, data_loader):
-        """Generate predictions."""
         self.model.eval()
         predictions = []
 
@@ -261,7 +222,7 @@ class TCNTrainer:
         return np.array(predictions)
 
     def save(self, path):
-        """Save model checkpoint."""
+        # persists weights, optimizer state, history, and receptive field
         torch.save({
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
@@ -270,27 +231,18 @@ class TCNTrainer:
         }, path)
 
     def load(self, path):
-        """Load model checkpoint."""
-        checkpoint = torch.load(path, map_location=self.device)
+        # loads weights and optimizer from disk
+        checkpoint = torch.load(path, map_location=self.device, weights_only=False)
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.history = checkpoint["history"]
 
 
 if __name__ == "__main__":
-    input_size = 30
-    model = FlightDelayTCN(input_size=input_size, num_channels=[32, 64, 64])
+    input_size = 22
+    model = RouteDelayTCN(input_size=input_size, num_channels=[32, 64, 64])
+    print(f"Receptive field: {model.receptive_field}")
 
-    print(f"Receptive field: {model.receptive_field} time steps")
-
-    batch_size = 16
-    seq_length = 28
-    x = torch.randn(batch_size, seq_length, input_size)
-
+    x = torch.randn(16, 28, input_size)
     output = model(x)
-    print(f"Input shape: {x.shape}")
-    print(f"Output shape: {output.shape}")
-
-    intermediates = model.get_intermediate_outputs(x)
-    for i, out in enumerate(intermediates):
-        print(f"Block {i + 1} output shape: {out.shape}")
+    print(f"Input: {x.shape}, Output: {output.shape}")

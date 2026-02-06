@@ -1,7 +1,3 @@
-"""
-Simple baseline models: naive, seasonal naive, moving average, and Prophet.
-"""
-
 import warnings
 
 import numpy as np
@@ -12,22 +8,28 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 class NaiveBaseline:
-    """Naive baseline: predicts yesterday's value."""
+    """Predicts yesterday's delay value."""
 
     def __init__(self, target_col="avg_arr_delay"):
         self.name = "Naive"
         self.target_col = target_col
 
     def fit(self, train_df):
-        pass
+        """Stores per-route medians as fallback for missing lag values."""
+        self.route_median_ = train_df.groupby("route")[self.target_col].median()
+        self.global_median_ = train_df[self.target_col].median()
+        return self
 
     def predict(self, df):
+        """Returns yesterday's delay, falls back to route median if missing."""
         predictions = df.groupby("route")[self.target_col].shift(1)
-        return predictions.fillna(predictions.median())
+        fill_values = df["route"].map(self.route_median_)
+        predictions = predictions.fillna(fill_values)
+        return predictions.fillna(self.global_median_)
 
 
 class SeasonalNaiveBaseline:
-    """Seasonal naive baseline: predicts value from same day last week."""
+    """Predicts the value from the same weekday last week."""
 
     def __init__(self, seasonality=7, target_col="avg_arr_delay"):
         self.name = f"SeasonalNaive_{seasonality}"
@@ -35,15 +37,21 @@ class SeasonalNaiveBaseline:
         self.target_col = target_col
 
     def fit(self, train_df):
-        pass
+        """Stores per-route medians as fallback."""
+        self.route_median_ = train_df.groupby("route")[self.target_col].median()
+        self.global_median_ = train_df[self.target_col].median()
+        return self
 
     def predict(self, df):
+        """Returns the delay from the same weekday last week."""
         predictions = df.groupby("route")[self.target_col].shift(self.seasonality)
-        return predictions.fillna(predictions.median())
+        fill_values = df["route"].map(self.route_median_)
+        predictions = predictions.fillna(fill_values)
+        return predictions.fillna(self.global_median_)
 
 
 class MovingAverageBaseline:
-    """Moving average baseline: predicts based on rolling window average."""
+    """Rolling window average over the past N days."""
 
     def __init__(self, window=7, target_col="avg_arr_delay"):
         self.name = f"MovingAverage_{window}"
@@ -51,18 +59,24 @@ class MovingAverageBaseline:
         self.target_col = target_col
 
     def fit(self, train_df):
-        pass
+        """Stores per-route medians as fallback."""
+        self.route_median_ = train_df.groupby("route")[self.target_col].median()
+        self.global_median_ = train_df[self.target_col].median()
+        return self
 
     def predict(self, df):
+        """Rolling mean of the past N days, shifted by 1 to avoid leaking today."""
         predictions = (
             df.groupby("route")[self.target_col]
             .transform(lambda x: x.shift(1).rolling(self.window, min_periods=1).mean())
         )
-        return predictions.fillna(predictions.median())
+        fill_values = df["route"].map(self.route_median_)
+        predictions = predictions.fillna(fill_values)
+        return predictions.fillna(self.global_median_)
 
 
 class ProphetModel:
-    """Facebook Prophet model for time series forecasting, trained separately per route."""
+    """Prophet time series model, trained per route."""
 
     def __init__(self, yearly_seasonality=True, weekly_seasonality=True,
                  daily_seasonality=False, add_holidays=True, target_col="avg_arr_delay"):
@@ -75,6 +89,7 @@ class ProphetModel:
         self.models = {}
 
     def fit(self, train_df):
+        """Trains one Prophet model per route."""
         routes = train_df["route"].unique()
 
         for route in routes:
@@ -95,7 +110,7 @@ class ProphetModel:
             self.models[route] = model
 
     def predict(self, df):
-        """Generate predictions for all routes, aligned to the DataFrame index."""
+        """Generates predictions for each route using its fitted model."""
         df = df.copy()
         df = df.sort_values(["route", "date"]).reset_index(drop=True)
 

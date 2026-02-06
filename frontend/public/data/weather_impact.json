@@ -1,0 +1,47 @@
+{
+  "by_severity": [
+    {
+      "severity": 0,
+      "label": "Clear",
+      "avg_delay": -2.0,
+      "n_flights": 26339,
+      "high_delay_pct": 0.087
+    },
+    {
+      "severity": 1,
+      "label": "Partly Cloudy",
+      "avg_delay": -0.2,
+      "n_flights": 863805,
+      "high_delay_pct": 0.11
+    },
+    {
+      "severity": 2,
+      "label": "Fog/Drizzle",
+      "avg_delay": 1.8,
+      "n_flights": 697550,
+      "high_delay_pct": 0.13
+    },
+    {
+      "severity": 3,
+      "label": "Rain",
+      "avg_delay": 10.5,
+      "n_flights": 627695,
+      "high_delay_pct": 0.289
+    },
+    {
+      "severity": 4,
+      "label": "Snow",
+      "avg_delay": 17.5,
+      "n_flights": 271264,
+      "high_delay_pct": 0.378
+    }
+  ],
+  "correlation": {
+    "temp": 0.048,
+    "wind": 0.102,
+    "precip": 0.294,
+    "snowfall": 0.197,
+    "severity": 0.266
+  },
+  "generated_at": "2026-02-05T04:39:23.818222+00:00"
+}

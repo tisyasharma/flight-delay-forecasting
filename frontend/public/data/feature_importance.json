@@ -1,0 +1,520 @@
+{
+  "models": {
+    "xgboost": {
+      "name": "XGBoost",
+      "features": [
+        {
+          "feature": "ewm_7_arr_delay",
+          "importance": 0.15097138520480427
+        },
+        {
+          "feature": "total_snowfall",
+          "importance": 0.058705156246894694
+        },
+        {
+          "feature": "has_adverse_weather",
+          "importance": 0.05161290894193493
+        },
+        {
+          "feature": "max_hourly_severity",
+          "importance": 0.04640112745268951
+        },
+        {
+          "feature": "precip_operating",
+          "importance": 0.044038838684193816
+        },
+        {
+          "feature": "is_covid_period",
+          "importance": 0.03726335234819147
+        },
+        {
+          "feature": "weather_severity_combined",
+          "importance": 0.03299073176690829
+        },
+        {
+          "feature": "storm_hours",
+          "importance": 0.0327431897911674
+        },
+        {
+          "feature": "lag_1_arr_delay",
+          "importance": 0.032455056819404436
+        },
+        {
+          "feature": "apt2_snowfall",
+          "importance": 0.02031133500948917
+        },
+        {
+          "feature": "total_precip",
+          "importance": 0.0196292010763383
+        },
+        {
+          "feature": "weather_severity_max",
+          "importance": 0.017688176266558726
+        },
+        {
+          "feature": "apt1_snowfall",
+          "importance": 0.016786528354920224
+        },
+        {
+          "feature": "rolling_mean_14_arr_delay",
+          "importance": 0.016149716417327792
+        },
+        {
+          "feature": "is_school_break",
+          "importance": 0.014076628620490396
+        },
+        {
+          "feature": "rolling_mean_7_arr_delay",
+          "importance": 0.01256999276814071
+        },
+        {
+          "feature": "day_of_week_cos",
+          "importance": 0.012462204778703932
+        },
+        {
+          "feature": "month_sin",
+          "importance": 0.012297317794862856
+        },
+        {
+          "feature": "route_delay_std",
+          "importance": 0.011990372824943465
+        },
+        {
+          "feature": "peak_wind_operating",
+          "importance": 0.011634844859785205
+        },
+        {
+          "feature": "day_of_week_sin",
+          "importance": 0.011397435883051284
+        },
+        {
+          "feature": "morning_severity",
+          "importance": 0.011140396908241104
+        },
+        {
+          "feature": "week_of_year",
+          "importance": 0.01092352092949495
+        },
+        {
+          "feature": "is_federal_holiday",
+          "importance": 0.010840343937646294
+        },
+        {
+          "feature": "evening_severity",
+          "importance": 0.010347265985967935
+        },
+        {
+          "feature": "max_wind",
+          "importance": 0.010339931486686715
+        },
+        {
+          "feature": "is_post_covid",
+          "importance": 0.010166495003683492
+        },
+        {
+          "feature": "route_std_demand",
+          "importance": 0.01002079501796209
+        },
+        {
+          "feature": "route_mean_demand",
+          "importance": 0.009871818032561834
+        },
+        {
+          "feature": "month_cos",
+          "importance": 0.009712273048197242
+        },
+        {
+          "feature": "weather_diff",
+          "importance": 0.009208251097591394
+        },
+        {
+          "feature": "apt1_temp_avg",
+          "importance": 0.009112002107023795
+        },
+        {
+          "feature": "apt2_wind_speed_max",
+          "importance": 0.008954612122448012
+        },
+        {
+          "feature": "days_to_holiday",
+          "importance": 0.008916021126229929
+        },
+        {
+          "feature": "weather_severity_lag_3",
+          "importance": 0.00891184612663908
+        },
+        {
+          "feature": "is_covid_recovery",
+          "importance": 0.008902303127574293
+        },
+        {
+          "feature": "is_month_end",
+          "importance": 0.008781642139399071
+        },
+        {
+          "feature": "apt2_temp_avg",
+          "importance": 0.008770613140479912
+        },
+        {
+          "feature": "days_from_holiday",
+          "importance": 0.008575193659631022
+        },
+        {
+          "feature": "day_of_month",
+          "importance": 0.008524044164643672
+        },
+        {
+          "feature": "route_delay_mean",
+          "importance": 0.008521175164924835
+        },
+        {
+          "feature": "apt2_precip_total",
+          "importance": 0.008188181197558243
+        },
+        {
+          "feature": "apt1_precip_total",
+          "importance": 0.008117546204480472
+        },
+        {
+          "feature": "weather_severity_lag_7",
+          "importance": 0.008067921209343722
+        },
+        {
+          "feature": "lag_7_arr_delay",
+          "importance": 0.007996137216378554
+        },
+        {
+          "feature": "day_of_week",
+          "importance": 0.007910658224755495
+        },
+        {
+          "feature": "month",
+          "importance": 0.00769961694543754
+        },
+        {
+          "feature": "route_encoded",
+          "importance": 0.007631107852151432
+        },
+        {
+          "feature": "apt1_wind_speed_max",
+          "importance": 0.007574846657665029
+        },
+        {
+          "feature": "lag_28_arr_delay",
+          "importance": 0.007342203280464079
+        },
+        {
+          "feature": "severe_weather_level",
+          "importance": 0.0073281519818411064
+        },
+        {
+          "feature": "route_median_demand",
+          "importance": 0.007309607883658428
+        },
+        {
+          "feature": "is_holiday_week",
+          "importance": 0.007288852285692477
+        },
+        {
+          "feature": "lag_14_arr_delay",
+          "importance": 0.0072760252869495225
+        },
+        {
+          "feature": "rolling_std_14_arr_delay",
+          "importance": 0.006515056661524448
+        },
+        {
+          "feature": "weather_severity_lag_1",
+          "importance": 0.006403204372485973
+        },
+        {
+          "feature": "rolling_std_7_arr_delay",
+          "importance": 0.006335844379087251
+        },
+        {
+          "feature": "is_weekend",
+          "importance": 0.005911566420666492
+        },
+        {
+          "feature": "is_month_start",
+          "importance": 0.005758029435713116
+        },
+        {
+          "feature": "apt1_severity",
+          "importance": 0.005126075497644602
+        },
+        {
+          "feature": "quarter",
+          "importance": 0.0050818175019818855
+        },
+        {
+          "feature": "apt2_severity",
+          "importance": 0.00442150326669268
+        },
+        {
+          "feature": "both_clear",
+          "importance": 0.0
+        }
+      ]
+    },
+    "lightgbm": {
+      "name": "LightGBM",
+      "features": [
+        {
+          "feature": "precip_operating",
+          "importance": 0.05216972034715526
+        },
+        {
+          "feature": "lag_1_arr_delay",
+          "importance": 0.04217293474766956
+        },
+        {
+          "feature": "day_of_month",
+          "importance": 0.03924783027965285
+        },
+        {
+          "feature": "peak_wind_operating",
+          "importance": 0.03844423015107683
+        },
+        {
+          "feature": "apt1_temp_avg",
+          "importance": 0.037737062037929925
+        },
+        {
+          "feature": "max_wind",
+          "importance": 0.03529411764705882
+        },
+        {
+          "feature": "week_of_year",
+          "importance": 0.034233365477338476
+        },
+        {
+          "feature": "apt2_temp_avg",
+          "importance": 0.03246544519447123
+        },
+        {
+          "feature": "total_precip",
+          "importance": 0.02963677274188364
+        },
+        {
+          "feature": "days_to_holiday",
+          "importance": 0.029411764705882353
+        },
+        {
+          "feature": "route_delay_std",
+          "importance": 0.027547412407585986
+        },
+        {
+          "feature": "days_from_holiday",
+          "importance": 0.026872388299582127
+        },
+        {
+          "feature": "lag_14_arr_delay",
+          "importance": 0.02655094824815172
+        },
+        {
+          "feature": "lag_28_arr_delay",
+          "importance": 0.025940212150433944
+        },
+        {
+          "feature": "apt2_wind_speed_max",
+          "importance": 0.025586628093860496
+        },
+        {
+          "feature": "ewm_7_arr_delay",
+          "importance": 0.02539376406300225
+        },
+        {
+          "feature": "lag_7_arr_delay",
+          "importance": 0.02507232401157184
+        },
+        {
+          "feature": "route_std_demand",
+          "importance": 0.024783027965284473
+        },
+        {
+          "feature": "total_snowfall",
+          "importance": 0.022115075538412087
+        },
+        {
+          "feature": "rolling_mean_14_arr_delay",
+          "importance": 0.021632915461266475
+        },
+        {
+          "feature": "day_of_week_sin",
+          "importance": 0.021600771456123432
+        },
+        {
+          "feature": "apt1_wind_speed_max",
+          "importance": 0.02150433944069431
+        },
+        {
+          "feature": "rolling_std_14_arr_delay",
+          "importance": 0.02066859530697525
+        },
+        {
+          "feature": "route_delay_mean",
+          "importance": 0.020507875281260045
+        },
+        {
+          "feature": "rolling_std_7_arr_delay",
+          "importance": 0.019222115075538414
+        },
+        {
+          "feature": "day_of_week",
+          "importance": 0.017068466730954676
+        },
+        {
+          "feature": "storm_hours",
+          "importance": 0.016907746705239472
+        },
+        {
+          "feature": "apt2_precip_total",
+          "importance": 0.01571841851494696
+        },
+        {
+          "feature": "route_mean_demand",
+          "importance": 0.015493410478945677
+        },
+        {
+          "feature": "apt1_precip_total",
+          "importance": 0.015139826422372228
+        },
+        {
+          "feature": "rolling_mean_7_arr_delay",
+          "importance": 0.01407907425265188
+        },
+        {
+          "feature": "day_of_week_cos",
+          "importance": 0.01366120218579235
+        },
+        {
+          "feature": "weather_severity_combined",
+          "importance": 0.013179042108646738
+        },
+        {
+          "feature": "month_sin",
+          "importance": 0.012696882031501124
+        },
+        {
+          "feature": "apt1_snowfall",
+          "importance": 0.011861137897782063
+        },
+        {
+          "feature": "route_encoded",
+          "importance": 0.010703953712632594
+        },
+        {
+          "feature": "weather_severity_lag_3",
+          "importance": 0.010478945676631308
+        },
+        {
+          "feature": "morning_severity",
+          "importance": 0.009611057537769207
+        },
+        {
+          "feature": "weather_severity_lag_7",
+          "importance": 0.009193185470909675
+        },
+        {
+          "feature": "is_covid_period",
+          "importance": 0.008871745419479268
+        },
+        {
+          "feature": "month_cos",
+          "importance": 0.008711025393764064
+        },
+        {
+          "feature": "evening_severity",
+          "importance": 0.008711025393764064
+        },
+        {
+          "feature": "is_post_covid",
+          "importance": 0.00781099324975892
+        },
+        {
+          "feature": "month",
+          "importance": 0.00781099324975892
+        },
+        {
+          "feature": "weather_severity_lag_1",
+          "importance": 0.006332369013179042
+        },
+        {
+          "feature": "is_school_break",
+          "importance": 0.006235936997749919
+        },
+        {
+          "feature": "apt2_snowfall",
+          "importance": 0.0058502089360334296
+        },
+        {
+          "feature": "weather_diff",
+          "importance": 0.005657344905175185
+        },
+        {
+          "feature": "is_covid_recovery",
+          "importance": 0.005046608807457409
+        },
+        {
+          "feature": "route_median_demand",
+          "importance": 0.004082288653166184
+        },
+        {
+          "feature": "is_federal_holiday",
+          "importance": 0.0034715525554484088
+        },
+        {
+          "feature": "max_hourly_severity",
+          "importance": 0.002217936354869817
+        },
+        {
+          "feature": "weather_severity_max",
+          "importance": 0.0018643522982963678
+        },
+        {
+          "feature": "apt1_severity",
+          "importance": 0.0017036322725811636
+        },
+        {
+          "feature": "apt2_severity",
+          "importance": 0.0011893281902925104
+        },
+        {
+          "feature": "is_holiday_week",
+          "importance": 0.001092896174863388
+        },
+        {
+          "feature": "quarter",
+          "importance": 0.0005785920925747348
+        },
+        {
+          "feature": "is_month_end",
+          "importance": 0.0003857280617164899
+        },
+        {
+          "feature": "is_weekend",
+          "importance": 0.0002892960462873674
+        },
+        {
+          "feature": "has_adverse_weather",
+          "importance": 0.00019286403085824494
+        },
+        {
+          "feature": "is_month_start",
+          "importance": 0.0001607200257152041
+        },
+        {
+          "feature": "severe_weather_level",
+          "importance": 0.0001285760205721633
+        },
+        {
+          "feature": "both_clear",
+          "importance": 0.0
+        }
+      ]
+    }
+  },
+  "total_features": 63,
+  "generated_at": "2026-02-05T04:41:02.023823+00:00"
+}

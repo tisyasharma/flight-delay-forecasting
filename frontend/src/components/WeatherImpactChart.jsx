@@ -4,8 +4,8 @@ import { assetUrl } from '../utils/helpers.js'
 
 
 const delayColorScale = d3.scaleLinear()
-  .domain([-5, 0, 10, 22])
-  .range(['#1e40af', '#5b4eb8', '#c43d6e', '#c8102e'])
+  .domain([-5, 6, 18])
+  .range(['#4f6d9a', '#7c5295', '#a94467'])
   .clamp(true)
 
 const FEATURE_LABELS = {
@@ -386,7 +386,7 @@ function WeatherImpactChart() {
         <p className="kicker">Weather Context</p>
         <h2>Weather Impact on Delays</h2>
         <p style={{ marginBottom: 'var(--space-lg)' }}>
-          Weather conditions correlate with arrival delays in our dataset. In our ablation study, adding weather features improved XGBoost forecast error by 10.4%, making it the most impactful feature group we tested. The data below aggregates weather conditions and arrival delays across 50 major U.S. domestic routes from January 2019 through June 2025.<sup><a href="#ref-3">3</a></sup><sup><a href="#ref-4">4</a></sup> We encoded 28 weather features, including hourly data aggregated into daily operating-hour metrics like peak wind, storm-hour counts, and departure/arrival-period conditions.
+          Weather conditions correlate with arrival delays in our dataset. In our ablation study, adding weather features improved XGBoost forecast error by 10.3%, making it the most impactful feature group we tested. The data below aggregates weather conditions and arrival delays across 50 major U.S. domestic routes from January 2019 through June 2025.<sup><a href="#ref-3">3</a></sup><sup><a href="#ref-4">4</a></sup> We encoded 28 weather features, including hourly data aggregated into daily operating-hour metrics like peak wind, storm-hour counts, and departure/arrival-period conditions.
         </p>
 
         <div className="viz-card" style={{ height: 'auto', padding: 0 }}>
@@ -431,7 +431,7 @@ function WeatherImpactChart() {
           </div>
           <div className="finding-card">
             <h4>Ablation Testing</h4>
-            <p>In our ablation test, adding 28 weather features lowered XGBoost MAE from 12.5 to 11.2 minutes, a 10.4% improvement and the largest gain from any feature group.</p>
+            <p>In our ablation test, adding 28 weather features improved XGBoost MAE by 10.3%, the largest gain from any feature group.</p>
           </div>
         </div>
       </div>

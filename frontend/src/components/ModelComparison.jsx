@@ -119,7 +119,7 @@ function ModelComparison({ forecastData, loading, error }) {
         <p className="kicker">Performance</p>
         <h2>Model Comparison</h2>
         <p style={{ marginBottom: 'var(--space-xl)' }}>
-          Four machine learning approaches compared on forecast error (MAE, lower is better) and hit rate, the percentage of daily route-level forecasts falling within a ±15-minute threshold. Two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN) are evaluated on the held-out test period (July 2024 through June 2025). Overall metrics are computed across all 50 training routes. Baselines (naive lag-1 at 15.2 min MAE, 7-day moving average at 14.0 min MAE) are excluded from the visualization but inform the improvement calculations below.
+          Four machine learning approaches compared on forecast error (MAE, lower is better) and hit rate, the percentage of daily route-level forecasts falling within a ±15-minute threshold. Two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN) are evaluated on the held-out test period (July 2024 through June 2025). Overall metrics are computed across all 50 training routes. Baselines (naive lag-1 at 14.9 min MAE, 7-day moving average at 13.6 min MAE) are excluded from the visualization but inform the improvement calculations below.
         </p>
 
         <div className="viz-card model-comparison-card" style={{ height: 'auto', padding: 0 }}>
@@ -188,7 +188,7 @@ function ModelComparison({ forecastData, loading, error }) {
             <p>{(() => {
               const lstm = modelResults.find(m => m.model === 'LSTM')
               if (!lstm) return 'Feature engineering drives model performance.'
-              return `In our ablation study, gradient boosting without weather data (12.5 min MAE) still outperformed deep learning with all 63 features (${lstm.mae.toFixed(1)} min). Weather features alone accounted for a 10.4% improvement in XGBoost performance.`
+              return `In our ablation study, gradient boosting without weather data still outperformed deep learning with the full feature set (${lstm.mae.toFixed(1)} min MAE). Weather features alone accounted for a 10.3% improvement in XGBoost performance.`
             })()}</p>
           </div>
         </div>

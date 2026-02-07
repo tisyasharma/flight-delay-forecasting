@@ -790,9 +790,9 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
               </p>
             </div>
             <div className="finding-card finding-card--red">
-              <h4>East Coast and Atlanta Struggle</h4>
+              <h4>Atlanta Hub and Northeast Struggle</h4>
               <p>
-                Routes involving Atlanta (FLL-ATL, MCO-ATL) and the Northeast corridor (LGA-ORD, LAX-JFK) show the highest errors, exceeding 14 minutes MAE. Weather volatility and hub congestion make these corridors harder to forecast.
+                Routes involving Atlanta (FLL-ATL, MCO-ATL) and the Northeast corridor (DCA-BOS, LGA-ORD) show the highest errors, exceeding 14 minutes MAE. Weather volatility and hub congestion make these corridors harder to forecast.
               </p>
             </div>
           </div>
@@ -802,7 +802,7 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
           <div className="findings-grid findings-grid--3">
             <div className="finding-card finding-card--blue">
               <h4>Consistent Advantage</h4>
-              <p>Gradient boosting outperforms deep learning on every route in the test set, with an average margin of 1.6 minutes MAE. The advantage holds regardless of route characteristics.</p>
+              <p>Gradient boosting outperforms deep learning on every route in the test set, with an average margin of 2.8 minutes MAE. The advantage holds regardless of route characteristics.</p>
             </div>
             <div className="finding-card finding-card--cyan">
               <h4>Largest Gaps</h4>
@@ -810,7 +810,7 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
             </div>
             <div className="finding-card finding-card--green">
               <h4>Smallest Gaps</h4>
-              <p>Hawaii routes (OGG-HNL, HNL-OGG) show the smallest gaps under 1.5 minutes. With stable weather and predictable delays, both model types perform similarly well.</p>
+              <p>Hawaii routes (OGG-HNL, HNL-OGG) show the smallest gaps at under 0.5 minutes. With stable weather and predictable delays, both model types perform similarly well.</p>
             </div>
           </div>
         )}

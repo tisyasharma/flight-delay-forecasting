@@ -1,11 +1,28 @@
 # Route-Level Delay Forecasting
 
-Flight delay forecasting for the 50 busiest U.S. routes using XGBoost, LightGBM, LSTM, and TCN. Trained on 6 years of BTS flight records and Open-Meteo weather data.
+Flight delay forecasting for the 50 busiest U.S. routes using XGBoost, LightGBM, LSTM, and TCN. Trained on 6 years of BTS flight records and Open-Meteo weather data (2019 - June 2025).
 
-**[Live dashboard](https://tisyasharma.github.io/flight-delay-forecasting/)** - explore the analysis and interact with model comparisons across routes and seasons.
+**Live dashboard:** [tisyasharma.github.io/flight-delay-forecasting](https://tisyasharma.github.io/flight-delay-forecasting/)
 
-[screenshot]
+![Time Series Visualizations](images/image-1.png)
+![Ranking Tables](images/image.png)
 
-Gradient boosting models (XGBoost, LightGBM) hit ~11.8 min MAE and predict 77% of route-days within 15 minutes of actual. The deep learning models (LSTM, TCN) trail at ~13.5 min MAE since the 63 hand-engineered features already capture the temporal patterns they'd need to learn from scratch. Removing weather features bumps error up 10%, so weather data inclusion proves to be helpful.
+## Results
 
-The notebooks (`01-08`) walk through EDA, feature engineering, model training, and error analysis. Model results are also evaluated on the pages link. ()
+| Model | MAE | Hit Rate |
+|-------|-----|----------|
+| XGBoost | 10.9 min | 79.6% |
+| LightGBM | 10.9 min | 79.4% |
+| LSTM | 13.1 min | 75.2% |
+| TCN | 13.1 min | 75.2% |
+
+Gradient boosting outperformed deep learning on every route tested. Removing weather features increased error by 10.3%, the largest impact of any feature group.
+
+## Data
+
+- **Flights:** [BTS On-Time Performance](https://www.transtats.bts.gov/) (Jan 2019 - Jun 2025)
+- **Weather:** [Open-Meteo ERA5 reanalysis](https://open-meteo.com/en/docs/historical-weather-api), hourly data aggregated into daily operating-hour metrics
+
+## Notebooks
+
+Notebooks `01-08` walk through EDA, feature engineering, model training, and error analysis. The dashboard includes interactive breakdowns by route, season, and model.

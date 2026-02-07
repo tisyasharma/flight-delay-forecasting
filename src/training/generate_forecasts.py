@@ -221,6 +221,18 @@ def merge_predictions(baseline_preds, lstm_preds, tcn_preds, xgboost_preds, ligh
     return merged
 
 
+def get_aligned_predictions(merged):
+    """
+    Returns only predictions where all models have values (lstm is not None).
+    Sequence models need SEQUENCE_LENGTH days of within-test-period history,
+    so their predictions start later than baselines.
+    """
+    aligned = {}
+    for route, preds in merged.items():
+        aligned[route] = [p for p in preds if p.get("lstm") is not None]
+    return aligned
+
+
 def generate_historical(df, test_start, target_col):
     """Gets pre-test data for the historical chart background."""
     historical = {}
@@ -255,11 +267,10 @@ def main():
     tcn_scaler_path = MODELS_DIR / "feature_scaler_tcn_arr_delay.pkl"
     tcn_scaler = joblib.load(tcn_scaler_path) if tcn_scaler_path.exists() else lstm_scaler
 
-    lstm_target_scaler_path = MODELS_DIR / "target_scaler_lstm.pkl"
-    lstm_target_scaler = joblib.load(lstm_target_scaler_path) if lstm_target_scaler_path.exists() else None
-
+    # load target scalers for inverse transform of model outputs
+    lstm_target_scaler = joblib.load(MODELS_DIR / "target_scaler_lstm.pkl")
     tcn_target_scaler_path = MODELS_DIR / "target_scaler_tcn.pkl"
-    tcn_target_scaler = joblib.load(tcn_target_scaler_path) if tcn_target_scaler_path.exists() else None
+    tcn_target_scaler = joblib.load(tcn_target_scaler_path) if tcn_target_scaler_path.exists() else lstm_target_scaler
 
     # load all models
     checkpoint = torch.load(MODELS_DIR / "best_lstm_arr_delay.pt", map_location="cpu", weights_only=False)
@@ -291,22 +302,27 @@ def main():
     test_start = pd.Timestamp(TEST_START)
 
     baseline_preds = generate_baseline_predictions(df, test_start, target_col)
-    lstm_preds = generate_lstm_predictions(df, lstm_model, lstm_scaler, lstm_features, test_start, target_col, target_scaler=lstm_target_scaler)
-    tcn_preds = generate_tcn_predictions(df, tcn_model, tcn_scaler, lstm_features, test_start, target_col, target_scaler=tcn_target_scaler)
+    lstm_preds = generate_lstm_predictions(df, lstm_model, lstm_scaler, lstm_features, test_start, target_col, lstm_target_scaler)
+    tcn_preds = generate_tcn_predictions(df, tcn_model, tcn_scaler, lstm_features, test_start, target_col, tcn_target_scaler)
     xgboost_preds = generate_tabular_predictions(df, xgb_model, xgb_features, test_start, target_col, "xgboost")
     lightgbm_preds = generate_tabular_predictions(df, lgb_model, lgb_features, test_start, target_col, "lightgbm")
 
     merged = merge_predictions(baseline_preds, lstm_preds, tcn_preds, xgboost_preds, lightgbm_preds)
     historical = generate_historical(df, test_start, target_col)
 
-    # compute metrics per model per route
+    # align predictions to samples where all models have predictions
+    # sequence models only predict from day 28+ (need SEQUENCE_LENGTH history)
+    # so we filter to samples where lstm is not None for fair comparison
+    aligned = get_aligned_predictions(merged)
+
+    # compute metrics per model per route using aligned samples
     model_keys = ["naive", "ma", "lstm", "tcn", "xgboost", "lightgbm"]
 
     all_metrics = {k: {"by_route": {}} for k in model_keys}
     all_actual = {k: [] for k in model_keys}
     all_pred = {k: [] for k in model_keys}
 
-    for route, preds in merged.items():
+    for route, preds in aligned.items():
         for k in model_keys:
             paired = [(p["actual"], p[k]) for p in preds if p[k] is not None]
             if not paired:

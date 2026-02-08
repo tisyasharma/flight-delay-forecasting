@@ -117,6 +117,17 @@ function Methods() {
                 carrier identity as a feature could capture this variation.
               </dd>
             </div>
+            <div className="methods-list__item">
+              <dt>Extreme Delay Prediction</dt>
+              <dd>
+                All models struggle to predict delays at their extremes. While they effectively identify when a
+                larger-than-typical delay is upcoming, they consistently underpredict the severity of extreme
+                events. This is inherent to regression models trained on skewed distributions: optimizing for
+                average loss pulls predictions toward central tendencies, extreme delays are rare in training
+                data so tail patterns are learned less robustly, and tree-based models cannot extrapolate beyond
+                values seen in their leaf nodes.
+              </dd>
+            </div>
           </dl>
         </div>
       </div>

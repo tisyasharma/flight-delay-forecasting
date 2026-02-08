@@ -572,7 +572,7 @@ function ForecastChart({ forecastData, loading, error }) {
 
   if (loading) {
     return (
-      <section id="forecast" className="section">
+      <section id="forecast" className="section section--alt">
         <div className="container">
           <p className="kicker">Time Series Forecasting</p>
           <h2>Route Delay Forecasts</h2>
@@ -586,7 +586,7 @@ function ForecastChart({ forecastData, loading, error }) {
 
   if (error) {
     return (
-      <section id="forecast" className="section">
+      <section id="forecast" className="section section--alt">
         <div className="container">
           <p className="kicker">Time Series Forecasting</p>
           <h2>Route Delay Forecasts</h2>
@@ -599,12 +599,15 @@ function ForecastChart({ forecastData, loading, error }) {
   }
 
   return (
-    <section id="forecast" className="section">
+    <section id="forecast" className="section section--alt">
       <div className="container" data-aos="fade-up">
         <p className="kicker">Time Series Forecasting</p>
         <h2>Route Delay Forecasts</h2>
+        <p style={{ marginBottom: 'var(--space-sm)' }}>
+          This section presents next-day average arrival delay forecasts for the top 20 U.S. domestic routes. Actual delays are shown in green, with model forecasts overlaid in dashed blue. The red vertical line marks the train and test split in July 2024.
+        </p>
         <p style={{ marginBottom: 'var(--space-md)' }}>
-          Next-day delay forecasts for the top 20 U.S. domestic routes reveal how models track real-world delay patterns over time. Each point represents the daily average arrival delay across all flights on a route, with actual delays in green and model predictions in dashed blue. Models were trained on data from January 2019 through December 2023 (left of the red split line), with January through June 2024 held out for tuning. The test period (right of the split) spans July 2024 through June 2025, representing true out-of-sample forecasts.
+          Forecasts are generated at the route-day level, reflecting aggregate delay risk rather than individual flight outcomes. The model tracks overall trends and seasonal volatility, with performance evaluated on a held-out test period from July 2024 through June 2025. Hit rate reflects the percentage of days where the forecasted delay is within ±15 minutes of the observed value.
         </p>
 
         {currentModelDetails && (

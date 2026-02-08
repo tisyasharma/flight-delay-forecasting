@@ -15,7 +15,7 @@ function Conclusion() {
               time-series task with well-engineered features, deep learning offered no advantage.
               However, recent research suggests hybrid architectures combining CNNs, LSTMs, and
               graph neural networks can outperform gradient boosting by capturing spatio-temporal
-              dependencies across airport networks.<sup><a href="#ref-6">6</a></sup>
+              dependencies across airport networks.<sup><a href="#ref-3">3</a></sup>
             </li>
             <li>
               <strong>Feature engineering mattered more than model architecture.</strong> In our
@@ -31,7 +31,7 @@ function Conclusion() {
               3.8 minutes (HNL-OGG) to 15.8 minutes (FLL-ATL), a 4x spread. Hawaii inter-island
               routes with stable weather were easiest to predict, while Northeast corridors and
               Atlanta hub connections proved most challenging. Seasonal patterns also emerged:
-              Fall had the lowest errors (8.8 min), Summer the highest (14.1 min).
+              Fall had the lowest errors, while spring had the highest.
             </li>
             <li>
               <strong>Practical utility for high-volume routes.</strong> For the routes studied,

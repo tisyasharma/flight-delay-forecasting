@@ -658,7 +658,7 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
 
   if (loading) {
     return (
-      <section id="error-analysis" className="section">
+      <section id="error-analysis" className="section section--alt">
         <div className="container">
           <p className="kicker">Analysis</p>
           <h2>Error Analysis</h2>
@@ -672,7 +672,7 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
 
   if (error) {
     return (
-      <section id="error-analysis" className="section">
+      <section id="error-analysis" className="section section--alt">
         <div className="container">
           <p className="kicker">Analysis</p>
           <h2>Error Analysis</h2>
@@ -705,20 +705,23 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
   const selectedModelName = availableModels.find(m => m.key === selectedModel)?.name || selectedModel
 
   const viewDescriptions = {
-    route: `Forecast accuracy varies across routes. ${higherIsBetter
-      ? `Higher ${config.label} indicates stronger performance.`
-      : `Lower ${config.label} indicates more accurate forecasts.`}`,
+    route: higherIsBetter
+      ? `Forecast accuracy varies across routes, where higher ${config.label} indicates stronger performance.`
+      : `Forecast accuracy varies across routes, where lower ${config.label} indicates more accurate forecasts.`,
     dumbbell: 'Gradient boosting outperforms deep learning on every route in the test set, though the margin varies by corridor.',
-    heatmap: `${selectedModelName} forecast error (MAE) by season and route. Seasonal patterns vary by model and corridor.`
+    heatmap: `The heatmap shows ${selectedModelName} forecast error (MAE) by season and route, revealing how seasonal patterns differ across corridors.`
   }
 
   return (
-    <section id="error-analysis" className="section">
+    <section id="error-analysis" className="section section--alt">
       <div className="container" data-aos="fade-up">
         <p className="kicker">Analysis</p>
         <h2>Error Analysis</h2>
+        <p style={{ marginBottom: 'var(--space-sm)' }}>
+          Forecast accuracy is not uniform across routes, seasons, or modeling approaches. This section examines how prediction error varies across the top 20 U.S. domestic routes during the test period (July 2024 to June 2025), highlighting where forecasts are most reliable and where they break down.
+        </p>
         <p style={{ marginBottom: 'var(--space-lg)' }}>
-          Not all routes are equally predictable. Forecast errors vary widely across the top 20 routes by traffic volume during the test period (July 2024 through June 2025). {viewDescriptions[viewMode]}
+          The views below explore error patterns by route, compare gradient boosting and deep learning performance, and reveal seasonal effects that influence forecast difficulty across corridors.
         </p>
 
         <div className="viz-card" style={{ height: 'auto', padding: 0 }}>
@@ -788,6 +791,11 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
           </div>
 
           <div ref={chartWrapRef} style={{ padding: 'var(--space-lg)', background: 'var(--bg-base-elevated)' }}>
+            <p style={{ margin: '0 0 var(--space-md) 0', fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              {viewMode === 'route' && `Forecast ${config.label} by route, sorted from most to least predictable.`}
+              {viewMode === 'dumbbell' && 'Route-level MAE comparison between gradient boosting and deep learning models.'}
+              {viewMode === 'heatmap' && 'Average forecast error by route and season for the selected model. Seasonal patterns and relative difficulty may differ across modeling approaches.'}
+            </p>
             {viewMode === 'route' && (
               <div ref={routeChartRef} style={{ width: '100%', height: '300px' }} />
             )}
@@ -805,25 +813,19 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
             <div className="finding-card finding-card--green">
               <h4>Hawaii Routes Lead</h4>
               <p>
-                Inter-island routes like HNL-OGG consistently show the lowest forecast errors. Stable tropical weather patterns and shorter flight distances make these corridors far more predictable than mainland routes.
+                Inter-island routes such as HNL-OGG consistently show the lowest forecast error. More stable weather patterns and shorter flight distances likely contribute to higher predictability relative to mainland routes.
               </p>
             </div>
             <div className="finding-card finding-card--cyan">
               <h4>Wide Variation</h4>
               <p>
-                {(() => {
-                  const maeValues = errorByRoute.map(r => r.mae).filter(v => v != null)
-                  const minMAE = Math.min(...maeValues)
-                  const maxMAE = Math.max(...maeValues)
-                  const ratio = (maxMAE / minMAE).toFixed(1)
-                  return `Forecast difficulty varies by up to ${ratio}x across routes. The easiest routes have MAE under 5 minutes, while the hardest exceed 15 minutes.`
-                })()}
+                Forecast difficulty varies by more than 4x across routes. The most predictable routes have MAE below 5 minutes, while the most challenging exceed 15 minutes, indicating substantial heterogeneity in route-level predictability.
               </p>
             </div>
             <div className="finding-card finding-card--red">
-              <h4>Atlanta Hub and Northeast Struggle</h4>
+              <h4>Atlanta Hub and Northeast Corridors</h4>
               <p>
-                Routes involving Atlanta (FLL-ATL, MCO-ATL) and the LGA-ORD corridor show the highest errors, exceeding 14 minutes MAE. Weather volatility and hub congestion make these corridors harder to forecast.
+                Routes involving Atlanta (FLL-ATL, MCO-ATL) and the LGA-ORD corridor show the highest forecast errors, often exceeding 14 minutes MAE. Hub congestion and weather volatility likely increase uncertainty on these routes.
               </p>
             </div>
           </div>
@@ -850,15 +852,15 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
           <div className="findings-grid findings-grid--3">
             <div className="finding-card finding-card--green">
               <h4>Easiest Season: {seasonalStats.bestSeason}</h4>
-              <p>{selectedModelName} performs best in {seasonalStats.bestSeason.toLowerCase()} with an average error of {seasonalStats.bestSeasonMAE.toFixed(1)} minutes. This may reflect more predictable conditions during this period.</p>
+              <p>This model performs best in {seasonalStats.bestSeason.toLowerCase()} with an average error of {seasonalStats.bestSeasonMAE.toFixed(1)} minutes.</p>
             </div>
             <div className="finding-card finding-card--cyan">
               <h4>Seasonal Spread</h4>
-              <p>The gap between best and worst seasons is {seasonalStats.spread.toFixed(1)} minutes. {seasonalStats.spread > 5 ? 'This variation may reflect differing weather and travel patterns across seasons.' : 'Relatively consistent performance across seasons.'}</p>
+              <p>For this model, the gap between best and worst seasons is {seasonalStats.spread.toFixed(1)} minutes.</p>
             </div>
             <div className="finding-card finding-card--red">
               <h4>Hardest Season: {seasonalStats.worstSeason}</h4>
-              <p>{seasonalStats.worstSeason} is most challenging with {seasonalStats.worstSeasonMAE.toFixed(1)} min average error. {seasonalStats.worstRouteInWorstSeason} is the toughest route this season at {seasonalStats.worstRouteMAE.toFixed(1)} min.</p>
+              <p>{seasonalStats.worstSeason} is most challenging for this model, with a {seasonalStats.worstSeasonMAE.toFixed(1)} minute average error.</p>
             </div>
           </div>
         )}

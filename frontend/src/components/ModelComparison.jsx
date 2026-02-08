@@ -27,7 +27,7 @@ function ModelComparison({ forecastData, loading, error }) {
 
   if (loading) {
     return (
-      <section id="model-comparison" className="section section--alt">
+      <section id="model-comparison" className="section">
         <div className="container">
           <p className="kicker">Performance</p>
           <h2>Model Comparison</h2>
@@ -41,7 +41,7 @@ function ModelComparison({ forecastData, loading, error }) {
 
   if (error) {
     return (
-      <section id="model-comparison" className="section section--alt">
+      <section id="model-comparison" className="section">
         <div className="container">
           <p className="kicker">Performance</p>
           <h2>Model Comparison</h2>
@@ -59,7 +59,7 @@ function ModelComparison({ forecastData, loading, error }) {
 
   if (mlModels.length === 0) {
     return (
-      <section id="model-comparison" className="section section--alt">
+      <section id="model-comparison" className="section">
         <div className="container">
           <p className="kicker">Performance</p>
           <h2>Model Comparison</h2>
@@ -124,12 +124,12 @@ function ModelComparison({ forecastData, loading, error }) {
   }
 
   return (
-    <section id="model-comparison" className="section section--alt">
+    <section id="model-comparison" className="section">
       <div className="container" data-aos="fade-up">
         <p className="kicker">Performance</p>
         <h2>Model Comparison</h2>
         <p style={{ marginBottom: 'var(--space-xl)' }}>
-          Four machine learning approaches compared on forecast error (MAE, lower is better) and hit rate, the percentage of daily route-level forecasts falling within a ±15-minute threshold. Two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN) are evaluated using 4-fold walk-forward cross-validation (2023-2024). Overall metrics are computed across all 50 training routes. Baselines (naive lag-1 at 15.09 min MAE, 7-day moving average at 13.53 min MAE) are excluded from the visualization but inform the improvement calculations below.
+          We evaluate four modeling approaches for next-day route-level delay forecasting using walk-forward cross-validation (2023-2024). The comparison includes two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN). Performance is assessed using MAE and hit rate, defined as the share of daily forecasts within ±15 minutes of the observed delay. Metrics are aggregated across all 50 training routes.
         </p>
 
         <div className="viz-card model-comparison-card" style={{ height: 'auto', padding: 0 }}>
@@ -173,8 +173,8 @@ function ModelComparison({ forecastData, loading, error }) {
           </div>
 
           <div style={{ padding: 'var(--space-sm) var(--space-lg)', background: 'var(--bg-base-soft)', borderTop: '1px solid var(--border)' }}>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              Results from a single training run (seed=42). Differences under 0.5 percentage points are within typical random variation.
+            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <span style={{ fontWeight: 600 }}>Notes on Evaluation:</span> Results reflect a single training run (seed = 42). Differences under 0.5 percentage points fall within typical run-to-run variation and can be interpreted as effectively tied.
             </p>
           </div>
         </div>
@@ -182,29 +182,15 @@ function ModelComparison({ forecastData, loading, error }) {
         <div className="findings-grid findings-grid--3">
           <div className="finding-card finding-card--green">
             <h4>Best Performance</h4>
-            <p>{(() => {
-              if (!baseline || !bestMAE) return 'Best models significantly outperform baselines.'
-              const improvement = ((baseline.mae - bestMAE.mae) / baseline.mae * 100).toFixed(0)
-              return `${bestWithin15.within_15.toFixed(2)}% of gradient boosting predictions land within 15 minutes of actual delays. This represents a ${improvement}% reduction in forecast error compared to the naive baseline.`
-            })()}</p>
+            <p>Gradient boosting achieved the strongest overall performance, with 77.7% of forecasts falling within ±15 minutes of the observed delay and a 25% reduction in MAE relative to a naive baseline.</p>
           </div>
           <div className="finding-card finding-card--cyan">
             <h4>Gradient Boosting vs Deep Learning</h4>
-            <p>{(() => {
-              const xgb = modelResults.find(m => m.model === 'XGBoost')
-              const lstm = modelResults.find(m => m.model === 'LSTM')
-              if (!xgb || !lstm) return 'Gradient boosting outperforms deep learning.'
-              const hitRateGap = (bestWithin15.within_15 - lstm.within_15).toFixed(2)
-              return `On this dataset, gradient boosting outperformed deep learning by ${hitRateGap} percentage points on hit rate (${bestWithin15.within_15.toFixed(2)}% vs ${lstm.within_15.toFixed(2)}%). Within each category, algorithm choice barely mattered: XGBoost and LightGBM tied at ${xgb.mae.toFixed(2)} min MAE, and LSTM and TCN tied at ${lstm.mae.toFixed(2)} min.`
-            })()}</p>
+            <p>On this dataset, gradient boosting outperformed deep learning by 3.3 percentage points on hit rate (77.7% vs 74.4%). Within each model family, performance differences were small: XGBoost and LightGBM tied at 11.25 min MAE, while LSTM and TCN clustered near 12.7 min MAE.</p>
           </div>
           <div className="finding-card finding-card--orange">
             <h4>Why Features Matter</h4>
-            <p>{(() => {
-              const lstm = modelResults.find(m => m.model === 'LSTM')
-              if (!lstm) return 'Feature engineering drives model performance.'
-              return `In our ablation study, gradient boosting without weather data still outperformed deep learning with the full feature set (${lstm.mae.toFixed(2)} min MAE). Weather features alone accounted for a 10.3% improvement in XGBoost performance.`
-            })()}</p>
+            <p>In ablation testing, gradient boosting without weather features still outperformed deep learning with the full feature set (12.69 min MAE). Weather features alone accounted for a 10.3% improvement in XGBoost performance.</p>
           </div>
         </div>
       </div>

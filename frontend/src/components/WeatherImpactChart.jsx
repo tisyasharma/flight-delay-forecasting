@@ -394,7 +394,7 @@ function WeatherImpactChart() {
         <p className="kicker">Weather Context</p>
         <h2>Weather Impact on Delays</h2>
         <p style={{ marginBottom: 'var(--space-lg)' }}>
-          Weather conditions correlate with arrival delays in our dataset. In our ablation study, adding weather features improved XGBoost forecast error by 10.3%, making it the most impactful feature group we tested. The data below aggregates weather conditions and arrival delays across 50 major U.S. domestic routes from January 2019 through June 2025.<sup><a href="#ref-3">3</a></sup><sup><a href="#ref-4">4</a></sup> We encoded 28 weather features, including hourly data aggregated into daily operating-hour metrics like peak wind, storm-hour counts, and departure/arrival-period conditions.
+          Weather conditions are strongly associated with arrival delays in our dataset. In an ablation study, adding weather features improved XGBoost forecast error by 10.3% (MAE), making weather the most impactful feature group by MAE reduction among those tested. The data below aggregates weather conditions and arrival delays across 50 major U.S. domestic routes from January 2019 through June 2025.<sup><a href="#ref-1">1</a></sup><sup><a href="#ref-2">2</a></sup> We encoded 28 weather features, aggregating hourly observations into daily operating-hour metrics such as peak wind, storm-hour counts, and departure- and arrival-period conditions.
         </p>
 
         <div className="viz-card" style={{ height: 'auto', padding: 0 }}>
@@ -427,19 +427,19 @@ function WeatherImpactChart() {
         <div className="findings-grid findings-grid--4">
           <div className="finding-card">
             <h4>Snow Delays</h4>
-            <p>Across {data?.by_severity?.find(d => d.label === 'Snow')?.n_flights?.toLocaleString()} flights during snow, the average delay is {data?.by_severity?.find(d => d.label === 'Snow')?.avg_delay?.toFixed(1)} minutes, nearly 20 minutes worse than clear conditions.</p>
+            <p>Across 271,264 flights during snow conditions, the average arrival delay is 17.5 minutes, nearly 20 minutes worse than clear conditions.</p>
           </div>
           <div className="finding-card">
             <h4>Clear Conditions</h4>
-            <p>Routes during clear weather average {Math.abs(data?.by_severity?.find(d => d.label === 'Clear')?.avg_delay)?.toFixed(1)} minutes early, with the lowest proportion of high-delay days at {(data?.by_severity?.find(d => d.label === 'Clear')?.high_delay_pct * 100)?.toFixed(1)}%.</p>
+            <p>Routes operating under clear weather average 2.0 minutes early, with the lowest proportion of high-delay days (8.7% exceeding 15 minutes).</p>
           </div>
           <div className="finding-card">
-            <h4>Strongest Correlation</h4>
-            <p>Precipitation has the strongest correlation with delays ({data?.correlation?.precip?.toFixed(3)}), followed by severity index ({data?.correlation?.severity?.toFixed(3)}) and snowfall ({data?.correlation?.snowfall?.toFixed(3)}).</p>
+            <h4>Strongest Correlations</h4>
+            <p>Precipitation shows the strongest correlation with arrival delays (0.294), followed by weather severity index (0.266) and snowfall (0.197).</p>
           </div>
           <div className="finding-card">
             <h4>Ablation Testing</h4>
-            <p>In our ablation test, adding 28 weather features improved XGBoost MAE by 10.3%, the largest gain from any feature group.</p>
+            <p>Including weather features reduced XGBoost MAE by 10.3%, representing the largest performance gain from any individual feature group.</p>
           </div>
         </div>
       </div>

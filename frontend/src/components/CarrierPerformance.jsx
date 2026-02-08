@@ -20,6 +20,7 @@ function CarrierPerformance() {
   const [sortBy, setSortBy] = useState('on_time_pct')
   const [sortDir, setSortDir] = useState('desc')
   const [showTooltip, setShowTooltip] = useState(false)
+  const [showModelingNote, setShowModelingNote] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -134,21 +135,14 @@ function CarrierPerformance() {
     )
   }
 
-  const topCarriers = [...(data?.carriers || [])].sort((a, b) => b.on_time_pct - a.on_time_pct).slice(0, 2)
-  const volumeLeader = [...(data?.carriers || [])].sort((a, b) => b.n_flights - a.n_flights)[0]
-  const byDelay = [...(data?.carriers || [])].sort((a, b) => a.avg_delay - b.avg_delay)
-  const bestDelay = byDelay[0]
-  const worstDelay = byDelay[byDelay.length - 1]
-  const delayRatio = bestDelay ? (worstDelay.avg_delay / bestDelay.avg_delay).toFixed(1) : '?'
-
-  const formatFlightCount = (n) => {
-    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
-    return `${(n / 1000).toFixed(0)}K`
-  }
-
   const dateRange = data?.date_range
+  const formatDateRange = (dateStr) => {
+    const [year, month] = dateStr.split('-')
+    const date = new Date(year, month - 1)
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  }
   const dateRangeText = dateRange
-    ? `${new Date(dateRange.start).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} to ${new Date(dateRange.end).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+    ? `${formatDateRange(dateRange.start)} to ${formatDateRange(dateRange.end)}`
     : 'January 2019 to June 2025'
 
   return (
@@ -156,39 +150,43 @@ function CarrierPerformance() {
       <div className="container" data-aos="fade-up">
         <p className="kicker">Industry Context</p>
         <h2>Carrier Performance Rankings</h2>
-        <p style={{ marginBottom: 'var(--space-lg)' }}>
-          Carrier choice affects delay outcomes, though our forecasting models operate at the route level and average across all airlines on a corridor. This is a simplification: carrier-specific effects within a route are not captured. Across the top 10 major U.S. carriers from {dateRangeText}, premium airlines consistently outperform low-cost alternatives on on-time arrivals, average delays, and severe disruptions.<sup><a href="#ref-4">4</a></sup> Regional operators (SkyWest, Endeavor, Envoy, Republic, etc.) are excluded as they fly under major airlines.
+        <p style={{ marginBottom: 'var(--space-sm)' }}>
+          Airline choice is associated with measurable differences in delay outcomes, even when aggregated at the route level. To provide industry context for our forecasts, we compare on-time performance across the top 10 major U.S. carriers from {dateRangeText}.<sup><a href="#ref-2">2</a></sup> Regional operators are excluded, as their operations are conducted under major airlines and are not independently scheduled.
         </p>
+        <p style={{ marginBottom: showModelingNote ? 'var(--space-sm)' : 'var(--space-lg)' }}>
+          Across all metrics examined, premium and legacy carriers consistently outperform low-cost alternatives in on-time arrivals, average delay, and frequency of severe disruptions.{' '}
+          <span
+            onClick={() => setShowModelingNote(!showModelingNote)}
+            style={{
+              color: 'var(--accent)',
+              cursor: 'pointer',
+              fontWeight: 500,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {showModelingNote ? 'Show less' : 'View modeling note...'}
+          </span>
+        </p>
+        {showModelingNote && (
+          <div
+            style={{
+              marginBottom: 'var(--space-lg)',
+              color: 'var(--text-secondary)',
+              paddingLeft: 'var(--space-md)',
+              borderLeft: '2px solid var(--border)'
+            }}
+          >
+            <p style={{ marginBottom: 'var(--space-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>Modeling Implications</p>
+            <p style={{ marginBottom: 'var(--space-sm)' }}>
+              Airline identity is not included as a model feature, and forecasts are generated using route-level averages across all carriers. Carrier-specific operational strategies and performance differences are therefore not explicitly modeled and are largely averaged out in the target variable.
+            </p>
+            <p>
+              These rankings are presented as industry context rather than predictive signal. The model's objective is to forecast overall delay risk on a route for a given day, reflecting system-level conditions such as weather, congestion, and seasonal demand that affect all operators on a corridor.
+            </p>
+          </div>
+        )}
 
         <div className="carrier-layout">
-          <div className="carrier-layout__sidebar">
-            <div className="finding-card">
-              <h4>Top Performers</h4>
-              <p>
-                {topCarriers.map(c => CARRIER_CONFIG[c.code]?.name || c.code).join(' and ')} rank highest in on-time performance ({(topCarriers[0]?.on_time_pct * 100).toFixed(0)}% and {(topCarriers[1]?.on_time_pct * 100).toFixed(0)}% respectively).
-              </p>
-            </div>
-            <div className="finding-card">
-              <h4>Volume Leader</h4>
-              <p>{CARRIER_CONFIG[volumeLeader?.code]?.name || volumeLeader?.code} operates the most flights ({formatFlightCount(volumeLeader?.n_flights)}) while maintaining {(volumeLeader?.on_time_pct * 100).toFixed(0)}% on-time performance.</p>
-            </div>
-            <div className="finding-card">
-              <h4>Budget Trade-offs</h4>
-              <p>{(() => {
-                const sorted = [...(data?.carriers || [])].sort((a, b) => b.on_time_pct - a.on_time_pct)
-                const best = sorted[0]
-                const worst = sorted[sorted.length - 1]
-                if (!best || !worst) return ''
-                const gap = ((best.on_time_pct - worst.on_time_pct) * 100).toFixed(1)
-                return `Budget carriers trail premium airlines by up to ${gap} percentage points in on-time performance.`
-              })()}</p>
-            </div>
-            <div className="finding-card">
-              <h4>Delay Gap</h4>
-              <p>Bottom performers average {delayRatio}x longer delays than top performers ({worstDelay?.avg_delay.toFixed(1)} min vs {bestDelay?.avg_delay.toFixed(1)} min).</p>
-            </div>
-          </div>
-
           <div className="carrier-layout__main">
             <div className="viz-card" style={{ padding: 0, height: 'auto' }}>
               <div className="carrier-table">
@@ -290,6 +288,25 @@ function CarrierPerformance() {
                   })}
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="carrier-layout__sidebar">
+            <div className="finding-card">
+              <h4>Top Performers</h4>
+              <p>Delta Air Lines and Hawaiian Airlines rank highest in on-time arrival performance, each exceeding 85% on-time, with the lowest average delays among major carriers.</p>
+            </div>
+            <div className="finding-card">
+              <h4>Operational Scale</h4>
+              <p>Southwest Airlines operates the highest flight volume (8.0M flights) while maintaining competitive on-time performance (81.3%), illustrating the trade-off between scale and schedule reliability.</p>
+            </div>
+            <div className="finding-card">
+              <h4>Budget Trade-offs</h4>
+              <p>Low-cost carriers trail premium airlines by up to 11.5 percentage points in on-time performance, reflecting differences in scheduling buffers, fleet utilization, and operational slack.</p>
+            </div>
+            <div className="finding-card">
+              <h4>Delay Gap</h4>
+              <p>Bottom-ranked carriers average 7.1x longer delays than top performers (12.1 minutes vs. 1.7 minutes), reflecting large reliability gaps.</p>
             </div>
           </div>
         </div>

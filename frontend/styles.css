@@ -286,7 +286,7 @@ p {
 
 .hero {
   padding-top: 120px;
-  padding-bottom: var(--space-xl);
+  padding-bottom: var(--space-md);
   background: var(--background);
   position: relative;
 }
@@ -294,8 +294,8 @@ p {
 /* Data Source Bar */
 
 .data-source-bar {
-  padding-top: var(--space-md);
-  padding-bottom: var(--space-3xl);
+  padding-top: 0;
+  padding-bottom: var(--space-xl);
   background: var(--background);
 }
 
@@ -1160,13 +1160,14 @@ sup a[href^="#ref-"]:hover {
 
 .carrier-layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: auto 1fr;
   gap: var(--space-xl);
   align-items: stretch;
 }
 
 .carrier-layout__main {
   min-width: 0;
+  max-width: 720px;
 }
 
 .carrier-layout__sidebar {
@@ -1180,7 +1181,6 @@ sup a[href^="#ref-"]:hover {
 
 .carrier-layout__sidebar .finding-card {
   margin: 0;
-  flex: 1;
 }
 
 .carrier-layout__main .viz-card {
@@ -1269,6 +1269,10 @@ sup a[href^="#ref-"]:hover {
   justify-content: flex-end;
 }
 
+.carrier-table__col--metric:nth-child(3) {
+  padding-right: var(--space-md);
+}
+
 .carrier-table__rank-badge {
   width: 26px;
   height: 26px;
@@ -1292,6 +1296,7 @@ sup a[href^="#ref-"]:hover {
   font-weight: 500;
   color: var(--text-primary);
   margin-right: var(--space-xs);
+  white-space: nowrap;
 }
 
 .carrier-table__carrier-code {
@@ -1785,6 +1790,103 @@ sup a[href^="#ref-"]:hover {
   color: var(--text-secondary);
 }
 
+/* Key Findings List */
+
+.key-findings-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: findings;
+}
+
+.key-findings-list__item {
+  counter-increment: findings;
+  padding: var(--space-lg) 0;
+  padding-left: 48px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  position: relative;
+}
+
+.key-findings-list__item::before {
+  content: counter(findings);
+  position: absolute;
+  left: 0;
+  top: var(--space-lg);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface-alt);
+  border-radius: 50%;
+  font-variant-numeric: tabular-nums;
+}
+
+.key-findings-list__item:first-child {
+  padding-top: 0;
+}
+
+.key-findings-list__item:first-child::before {
+  top: 0;
+}
+
+.key-findings-list__item:last-child {
+  border-bottom: none;
+}
+
+/* Expand Button */
+
+.expand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-lg);
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.expand-btn:hover {
+  background: var(--surface);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.expand-btn:active {
+  transform: scale(0.98);
+}
+
+.expand-btn__icon {
+  transition: transform 0.25s ease;
+}
+
+.expand-btn__icon--rotated {
+  transform: rotate(180deg);
+}
+
+@keyframes methodFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Route Delay Map */
 
 .route-map-card {
@@ -1923,6 +2025,27 @@ sup a[href^="#ref-"]:hover {
 }
 
 /* Responsive - Components */
+
+@media (max-width: 1100px) {
+  .carrier-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .carrier-layout__main {
+    max-width: none;
+  }
+
+  .carrier-layout__sidebar {
+    order: 2;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+  }
+
+  .carrier-layout__main {
+    order: 1;
+  }
+}
 
 @media (max-width: 900px) {
   .forecast-layout {
@@ -2088,24 +2211,25 @@ sup a[href^="#ref-"]:hover {
   }
 
   .feature-table__row {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-    gap: var(--space-xs);
-    padding: var(--space-md) var(--space-lg);
+    grid-template-columns: 1fr auto 80px;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
   }
 
-  .feature-table__col--category,
   .feature-table__col--bar {
     display: none;
   }
 
+  .feature-table__col--category {
+    display: flex;
+  }
+
   .feature-table__col--importance {
-    grid-column: 1;
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .feature-table__group-bar {
-    display: none;
+    width: 60px;
   }
 
   .methods-list__item {

@@ -97,11 +97,6 @@ const FEATURE_MAPPING = {
   'origin_daily_flights': { label: 'Origin Volume', category: 'route' }
 }
 
-const IMPORTANCE_LABELS = {
-  xgboost: 'gain (reduction in prediction error across splits)',
-  lightgbm: 'split count (how often each feature is used in decision splits)'
-}
-
 function FeatureImportance() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -193,7 +188,7 @@ function FeatureImportance() {
       <section id="feature-importance" className="section">
         <div className="container">
           <p className="kicker">Feature Evaluation</p>
-          <h2>Key Drivers of Route Delay Forecasts</h2>
+          <h2>Key Contributors to Route Delay Forecasts</h2>
           <div className="viz-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
             Loading feature data...
           </div>
@@ -207,7 +202,7 @@ function FeatureImportance() {
       <section id="feature-importance" className="section">
         <div className="container">
           <p className="kicker">Feature Evaluation</p>
-          <h2>Key Drivers of Route Delay Forecasts</h2>
+          <h2>Key Contributors to Route Delay Forecasts</h2>
           <div className="viz-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', color: 'var(--red)' }}>
             {error}
           </div>
@@ -222,11 +217,9 @@ function FeatureImportance() {
     <section id="feature-importance" className="section">
       <div className="container" data-aos="fade-up">
         <p className="kicker">Feature Evaluation</p>
-        <h2>Key Drivers of Route Delay Forecasts</h2>
+        <h2>Key Contributors to Route Delay Forecasts</h2>
         <p style={{ marginBottom: 'var(--space-lg)' }}>
-          Building on the weather patterns and carrier behaviors explored above, feature importance reveals how machine learning models weigh these factors when forecasting delays. The visualization below shows which of the {data?.total_features || 63} input variables matter most, based on models trained on 50 U.S. domestic routes from January 2019 through December 2023.
-          Importance is measured by {data?.models?.[selectedModel]?.name || 'model'} {IMPORTANCE_LABELS[selectedModel] || 'importance'}.
-          Feature importance is shown for gradient boosting models, which provide native importance scores. Neural networks (LSTM, TCN) require separate attribution methods not included here.
+          Feature importance highlights which of the 63 input variables contribute most to model performance when forecasting delays across 50 U.S. domestic routes (January 2019 through December 2023 training period). Importance rankings may vary slightly between XGBoost and LightGBM due to model-specific calculation methods.
         </p>
 
         <div className="feature-layout">
@@ -332,6 +325,9 @@ function FeatureImportance() {
                   )
                 })}
               </div>
+              <p style={{ margin: 0, padding: 'var(--space-sm) var(--space-lg)', fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', background: 'var(--bg-base-soft)' }}>
+                Feature importance reflects how the selected model uses inputs to reduce forecast error, not causal effects on delays.
+              </p>
             </div>
           </div>
 
@@ -345,13 +341,13 @@ function FeatureImportance() {
 
               const categoryDescriptions = {
                 weather: (cat) => {
-                  if (cat === topCategory) return 'Weather features collectively account for the largest share of importance, driven by adverse conditions and precipitation.'
+                  if (cat === topCategory) return 'Weather features collectively account for the largest share of importance, indicating strong sensitivity to adverse conditions and precipitation in the model.'
                   return 'Weather features capture adverse conditions and precipitation effects on delays.'
                 },
                 lag: () => 'Recent delay history provides strong momentum signals for next-day route forecasts.',
-                temporal: () => 'Calendar patterns including COVID-era shifts, seasonality, and holidays shape delay behavior.',
+                temporal: () => 'Calendar-based features, including COVID-era shifts, seasonality, and holidays, capture recurring patterns that influence forecast accuracy.',
                 route: (cat) => {
-                  if (cat === bottomCategory) return 'Route-level features contribute the least, suggesting weather and timing matter more than corridor identity.'
+                  if (cat === bottomCategory) return 'Route-level identifiers contribute the least incremental predictive value, suggesting limited additional signal beyond weather, temporal, and recent-delay features.'
                   return 'Route-level features capture corridor-specific characteristics like distance and hub status.'
                 }
               }

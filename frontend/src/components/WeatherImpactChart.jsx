@@ -73,10 +73,16 @@ function WeatherImpactChart() {
 
     const sorted = [...data.by_severity].sort((a, b) => a.avg_delay - b.avg_delay)
     const containerWidth = divergingRef.current.clientWidth
-    const rowHeight = 52
+    const isMobile = containerWidth < 500
+    const rowHeight = isMobile ? 44 : 52
     const containerHeight = sorted.length * rowHeight + 70
 
-    const margin = { top: 24, right: 120, bottom: 36, left: 110 }
+    const margin = {
+      top: 24,
+      right: isMobile ? 16 : 120,
+      bottom: 36,
+      left: isMobile ? 90 : 110
+    }
     const chartWidth = containerWidth - margin.left - margin.right
     const chartHeight = sorted.length * rowHeight
 
@@ -170,40 +176,42 @@ function WeatherImpactChart() {
       .call(g => g.select('.domain').remove())
       .selectAll('text')
       .attr('fill', 'var(--text-primary)')
-      .attr('font-size', '13px')
+      .attr('font-size', isMobile ? '11px' : '13px')
       .attr('font-weight', '500')
 
-    // secondary info on the right: n_flights and high_delay_pct
-    sorted.forEach((d, i) => {
-      const y = yScale(d.label) + yScale.bandwidth() / 2
+    // secondary info on the right: n_flights and high_delay_pct (hidden on mobile)
+    if (!isMobile) {
+      sorted.forEach((d, i) => {
+        const y = yScale(d.label) + yScale.bandwidth() / 2
 
-      g.append('text')
-        .attr('x', chartWidth + 12)
-        .attr('y', y - 7)
-        .attr('fill', 'var(--text-muted)')
-        .attr('font-size', '11px')
-        .attr('font-variant-numeric', 'tabular-nums')
-        .attr('opacity', 0)
-        .text(`${d.n_flights.toLocaleString()} flights`)
-        .transition()
-        .duration(300)
-        .delay(i * 70 + 300)
-        .attr('opacity', 1)
+        g.append('text')
+          .attr('x', chartWidth + 12)
+          .attr('y', y - 7)
+          .attr('fill', 'var(--text-muted)')
+          .attr('font-size', '11px')
+          .attr('font-variant-numeric', 'tabular-nums')
+          .attr('opacity', 0)
+          .text(`${d.n_flights.toLocaleString()} flights`)
+          .transition()
+          .duration(300)
+          .delay(i * 70 + 300)
+          .attr('opacity', 1)
 
-      g.append('text')
-        .attr('x', chartWidth + 12)
-        .attr('y', y + 8)
-        .attr('fill', d.high_delay_pct > 0.2 ? '#dc2626' : 'var(--text-muted)')
-        .attr('font-size', '11px')
-        .attr('font-weight', d.high_delay_pct > 0.2 ? '600' : '400')
-        .attr('font-variant-numeric', 'tabular-nums')
-        .attr('opacity', 0)
-        .text(`${(d.high_delay_pct * 100).toFixed(1)}% over 15 min`)
-        .transition()
-        .duration(300)
-        .delay(i * 70 + 300)
-        .attr('opacity', 1)
-    })
+        g.append('text')
+          .attr('x', chartWidth + 12)
+          .attr('y', y + 8)
+          .attr('fill', d.high_delay_pct > 0.2 ? '#dc2626' : 'var(--text-muted)')
+          .attr('font-size', '11px')
+          .attr('font-weight', d.high_delay_pct > 0.2 ? '600' : '400')
+          .attr('font-variant-numeric', 'tabular-nums')
+          .attr('opacity', 0)
+          .text(`${(d.high_delay_pct * 100).toFixed(1)}% over 15 min`)
+          .transition()
+          .duration(300)
+          .delay(i * 70 + 300)
+          .attr('opacity', 1)
+      })
+    }
 
     // x-axis
     g.append('g')

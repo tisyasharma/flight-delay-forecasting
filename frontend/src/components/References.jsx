@@ -44,6 +44,14 @@ function References() {
             </a>
             .
           </li>
+          <li id="ref-6">
+            Chen, H. et al., "Flight Delay Prediction Based on Deep Learning: A Systematic Review and Meta-analysis,"
+            International Journal of Computational Intelligence Systems 18, 68 (2025),{' '}
+            <a href="https://link.springer.com/article/10.1007/s44196-025-00932-2" target="_blank" rel="noopener noreferrer">
+              https://doi.org/10.1007/s44196-025-00932-2
+            </a>
+            .
+          </li>
         </ol>
       </div>
     </section>

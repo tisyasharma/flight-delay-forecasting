@@ -13,6 +13,7 @@ const NAV_SECTIONS = [
 
 function Navigation() {
   const [activeSection, setActiveSection] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -38,6 +39,7 @@ function Navigation() {
 
   const handleClick = (e, id) => {
     e.preventDefault()
+    setMenuOpen(false)
     const el = document.getElementById(id)
     if (el) {
       const navHeight = 56
@@ -54,12 +56,23 @@ function Navigation() {
           className="brand"
           onClick={(e) => {
             e.preventDefault()
+            setMenuOpen(false)
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
         >
           Route Delay Forecasting
         </a>
-        <div className="nav__links">
+        <button
+          className={`nav__toggle ${menuOpen ? 'nav__toggle--open' : ''}`}
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle navigation menu"
+          aria-expanded={menuOpen}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div className={`nav__links ${menuOpen ? 'nav__links--open' : ''}`}>
           {NAV_SECTIONS.map(({ id, label }) => (
             <a
               key={id}

@@ -19,6 +19,7 @@ function getQuarter(dateStr) {
 }
 
 const SEASON_ORDER = ['Winter', 'Spring', 'Summer', 'Fall']
+const SEASON_ABBREV = { Winter: 'Win', Spring: 'Spr', Summer: 'Sum', Fall: 'Fall' }
 
 function ErrorAnalysis({ forecastData: rawData, loading, error }) {
   const routeChartRef = useRef(null)
@@ -168,9 +169,16 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
     const container = routeChartRef.current
     container.innerHTML = ''
 
-    const margin = { top: 20, right: 30, bottom: 80, left: 50 }
-    const width = container.clientWidth - margin.left - margin.right
-    const height = 300 - margin.top - margin.bottom
+    const containerWidth = container.clientWidth
+    const isMobile = containerWidth < 500
+    const margin = {
+      top: 20,
+      right: isMobile ? 10 : 30,
+      bottom: isMobile ? 90 : 80,
+      left: isMobile ? 40 : 50
+    }
+    const width = containerWidth - margin.left - margin.right
+    const height = (isMobile ? 280 : 300) - margin.top - margin.bottom
 
     const svg = d3.select(container)
       .append('svg')
@@ -252,31 +260,33 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
         hideTooltip()
       })
 
-    svg.selectAll('.label')
-      .data(sortedData)
-      .enter()
-      .append('text')
-      .attr('x', d => x(d.route) + x.bandwidth() / 2)
-      .attr('y', d => y(d[metric]) - 6)
-      .attr('text-anchor', 'middle')
-      .attr('fill', 'var(--text-primary)')
-      .attr('font-size', '9px')
-      .attr('font-weight', '600')
-      .attr('opacity', 0)
-      .text(d => d[metric] != null ? d[metric].toFixed(1) : '')
-      .transition()
-      .duration(300)
-      .delay((d, i) => i * 40 + 300)
-      .attr('opacity', 1)
+    if (!isMobile) {
+      svg.selectAll('.label')
+        .data(sortedData)
+        .enter()
+        .append('text')
+        .attr('x', d => x(d.route) + x.bandwidth() / 2)
+        .attr('y', d => y(d[metric]) - 6)
+        .attr('text-anchor', 'middle')
+        .attr('fill', 'var(--text-primary)')
+        .attr('font-size', '9px')
+        .attr('font-weight', '600')
+        .attr('opacity', 0)
+        .text(d => d[metric] != null ? d[metric].toFixed(1) : '')
+        .transition()
+        .duration(300)
+        .delay((d, i) => i * 40 + 300)
+        .attr('opacity', 1)
+    }
 
     svg.append('g')
       .attr('transform', `translate(0,${height})`)
       .call(d3.axisBottom(x))
       .selectAll('text')
       .style('fill', 'var(--text-primary)')
-      .style('font-size', '9px')
+      .style('font-size', isMobile ? '8px' : '9px')
       .style('font-weight', '500')
-      .attr('transform', 'rotate(-40)')
+      .attr('transform', isMobile ? 'rotate(-55)' : 'rotate(-40)')
       .attr('text-anchor', 'end')
       .attr('dx', '-0.5em')
       .attr('dy', '0.3em')
@@ -321,10 +331,16 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
       .sort((a, b) => a.gb - b.gb)
 
     const containerWidth = dumbbellRef.current.clientWidth
-    const rowHeight = 21
-    const containerHeight = dumbbellData.length * rowHeight + 74
+    const isMobile = containerWidth < 500
+    const rowHeight = isMobile ? 18 : 21
+    const containerHeight = dumbbellData.length * rowHeight + (isMobile ? 54 : 74)
 
-    const margin = { top: 32, right: 50, bottom: 36, left: 100 }
+    const margin = {
+      top: isMobile ? 20 : 32,
+      right: isMobile ? 20 : 50,
+      bottom: 36,
+      left: isMobile ? 70 : 100
+    }
     const chartWidth = containerWidth - margin.left - margin.right
     const chartHeight = dumbbellData.length * rowHeight
 
@@ -416,35 +432,37 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
       .call(g => g.select('.domain').remove())
       .selectAll('text')
       .attr('fill', 'var(--text-primary)')
-      .attr('font-size', '10px')
+      .attr('font-size', isMobile ? '8px' : '10px')
       .attr('font-weight', '500')
 
     g.append('g')
       .attr('transform', `translate(0,${chartHeight + 4})`)
-      .call(d3.axisBottom(xScale).ticks(6).tickFormat(d => `${d.toFixed(0)}`))
+      .call(d3.axisBottom(xScale).ticks(isMobile ? 4 : 6).tickFormat(d => `${d.toFixed(0)}`))
       .call(g => g.select('.domain').remove())
       .selectAll('text')
       .attr('fill', 'var(--text-muted)')
-      .attr('font-size', '10px')
+      .attr('font-size', isMobile ? '9px' : '10px')
 
     svg.append('text')
       .attr('x', margin.left + chartWidth / 2)
       .attr('y', containerHeight - 4)
       .attr('text-anchor', 'middle')
       .attr('fill', 'var(--text-muted)')
-      .attr('font-size', '10px')
+      .attr('font-size', isMobile ? '9px' : '10px')
       .text('MAE (minutes)')
 
-    const legendX = margin.left + chartWidth - 180
-    const legendY = 10
+    if (!isMobile) {
+      const legendX = margin.left + chartWidth - 180
+      const legendY = 10
 
-    svg.append('circle').attr('cx', legendX).attr('cy', legendY).attr('r', 4).attr('fill', '#1e40af')
-    svg.append('text').attr('x', legendX + 10).attr('y', legendY + 4).text('Gradient Boosting (XGBoost + LightGBM)')
-      .attr('fill', 'var(--text-muted)').attr('font-size', '10px')
+      svg.append('circle').attr('cx', legendX).attr('cy', legendY).attr('r', 4).attr('fill', '#1e40af')
+      svg.append('text').attr('x', legendX + 10).attr('y', legendY + 4).text('Gradient Boosting (XGBoost + LightGBM)')
+        .attr('fill', 'var(--text-muted)').attr('font-size', '10px')
 
-    svg.append('circle').attr('cx', legendX).attr('cy', legendY + 14).attr('r', 4).attr('fill', '#c8102e')
-    svg.append('text').attr('x', legendX + 10).attr('y', legendY + 18).text('Deep Learning (LSTM + TCN)')
-      .attr('fill', 'var(--text-muted)').attr('font-size', '10px')
+      svg.append('circle').attr('cx', legendX).attr('cy', legendY + 14).attr('r', 4).attr('fill', '#c8102e')
+      svg.append('text').attr('x', legendX + 10).attr('y', legendY + 18).text('Deep Learning (LSTM + TCN)')
+        .attr('fill', 'var(--text-muted)').attr('font-size', '10px')
+    }
   }
 
   const renderHeatmap = () => {
@@ -496,10 +514,16 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
     if (allValues.length === 0) return
 
     const containerWidth = heatmapRef.current.clientWidth
-    const cellHeight = 23
-    const containerHeight = sortedRoutes.length * cellHeight + 74
+    const isMobile = containerWidth < 500
+    const cellHeight = isMobile ? 20 : 23
+    const containerHeight = sortedRoutes.length * cellHeight + (isMobile ? 54 : 74)
 
-    const margin = { top: 32, right: 40, bottom: 24, left: 100 }
+    const margin = {
+      top: isMobile ? 28 : 32,
+      right: isMobile ? 10 : 40,
+      bottom: 24,
+      left: isMobile ? 70 : 100
+    }
     const chartWidth = containerWidth - margin.left - margin.right
     const chartHeight = sortedRoutes.length * cellHeight
 
@@ -557,7 +581,7 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
           .attr('dy', '0.35em')
           .attr('text-anchor', 'middle')
           .attr('fill', '#1e293b')
-          .attr('font-size', '10px')
+          .attr('font-size', isMobile ? '8px' : '10px')
           .attr('font-weight', '600')
           .attr('font-variant-numeric', 'tabular-nums')
           .attr('pointer-events', 'none')
@@ -575,59 +599,61 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
       .call(g => g.select('.domain').remove())
       .selectAll('text')
       .attr('fill', 'var(--text-primary)')
-      .attr('font-size', '10px')
+      .attr('font-size', isMobile ? '8px' : '10px')
       .attr('font-weight', '500')
 
     g.append('g')
       .attr('transform', `translate(0, -6)`)
-      .call(d3.axisTop(xScale).tickSize(0))
+      .call(d3.axisTop(xScale).tickSize(0).tickFormat(d => isMobile ? SEASON_ABBREV[d] : d))
       .call(g => g.select('.domain').remove())
       .selectAll('text')
       .attr('fill', 'var(--text-primary)')
-      .attr('font-size', '11px')
+      .attr('font-size', isMobile ? '9px' : '11px')
       .attr('font-weight', '600')
 
-    const legendWidth = 160
-    const legendHeight = 10
-    const legendX = containerWidth - margin.right - legendWidth
-    const legendY = containerHeight - 18
+    if (!isMobile) {
+      const legendWidth = 160
+      const legendHeight = 10
+      const legendX = containerWidth - margin.right - legendWidth
+      const legendY = containerHeight - 18
 
-    const defs = svg.append('defs')
-    const linearGradient = defs.append('linearGradient').attr('id', 'heatmap-gradient')
-    linearGradient.append('stop').attr('offset', '0%').attr('stop-color', '#10b981')
-    linearGradient.append('stop').attr('offset', '50%').attr('stop-color', '#f59e0b')
-    linearGradient.append('stop').attr('offset', '100%').attr('stop-color', '#ef4444')
+      const defs = svg.append('defs')
+      const linearGradient = defs.append('linearGradient').attr('id', 'heatmap-gradient')
+      linearGradient.append('stop').attr('offset', '0%').attr('stop-color', '#10b981')
+      linearGradient.append('stop').attr('offset', '50%').attr('stop-color', '#f59e0b')
+      linearGradient.append('stop').attr('offset', '100%').attr('stop-color', '#ef4444')
 
-    svg.append('rect')
-      .attr('x', legendX)
-      .attr('y', legendY)
-      .attr('width', legendWidth)
-      .attr('height', legendHeight)
-      .attr('rx', 3)
-      .style('fill', 'url(#heatmap-gradient)')
+      svg.append('rect')
+        .attr('x', legendX)
+        .attr('y', legendY)
+        .attr('width', legendWidth)
+        .attr('height', legendHeight)
+        .attr('rx', 3)
+        .style('fill', 'url(#heatmap-gradient)')
 
-    svg.append('text')
-      .attr('x', legendX)
-      .attr('y', legendY - 4)
-      .attr('fill', 'var(--text-muted)')
-      .attr('font-size', '9px')
-      .text(`${d3.min(allValues).toFixed(0)} min`)
+      svg.append('text')
+        .attr('x', legendX)
+        .attr('y', legendY - 4)
+        .attr('fill', 'var(--text-muted)')
+        .attr('font-size', '9px')
+        .text(`${d3.min(allValues).toFixed(0)} min`)
 
-    svg.append('text')
-      .attr('x', legendX + legendWidth)
-      .attr('y', legendY - 4)
-      .attr('text-anchor', 'end')
-      .attr('fill', 'var(--text-muted)')
-      .attr('font-size', '9px')
-      .text(`${d3.max(allValues).toFixed(0)} min`)
+      svg.append('text')
+        .attr('x', legendX + legendWidth)
+        .attr('y', legendY - 4)
+        .attr('text-anchor', 'end')
+        .attr('fill', 'var(--text-muted)')
+        .attr('font-size', '9px')
+        .text(`${d3.max(allValues).toFixed(0)} min`)
 
-    svg.append('text')
-      .attr('x', legendX + legendWidth / 2)
-      .attr('y', legendY - 4)
-      .attr('text-anchor', 'middle')
-      .attr('fill', 'var(--text-muted)')
-      .attr('font-size', '9px')
-      .text('MAE')
+      svg.append('text')
+        .attr('x', legendX + legendWidth / 2)
+        .attr('y', legendY - 4)
+        .attr('text-anchor', 'middle')
+        .attr('fill', 'var(--text-muted)')
+        .attr('font-size', '9px')
+        .text('MAE')
+    }
   }
 
   if (loading) {

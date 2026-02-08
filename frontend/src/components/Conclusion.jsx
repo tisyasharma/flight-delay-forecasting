@@ -15,7 +15,7 @@ function Conclusion() {
               time-series task with well-engineered features, deep learning offered no advantage.
               However, recent research suggests hybrid architectures combining CNNs, LSTMs, and
               graph neural networks can outperform gradient boosting by capturing spatio-temporal
-              dependencies across airport networks (<a href="https://link.springer.com/article/10.1007/s44196-025-00932-2" target="_blank" rel="noopener noreferrer">Chen et al., 2025</a>).
+              dependencies across airport networks.<sup><a href="#ref-6">6</a></sup>
             </li>
             <li>
               <strong>Feature engineering mattered more than model architecture.</strong> In our

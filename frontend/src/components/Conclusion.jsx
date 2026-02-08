@@ -10,9 +10,12 @@ function Conclusion() {
             <li>
               <strong>Gradient boosting outperformed deep learning in this study.</strong> On our
               dataset of 50 high-volume U.S. routes with daily aggregated delays, XGBoost and
-              LightGBM achieved lower error than LSTM and TCN on every route, with a 77.7% hit
-              rate (predictions within 15 minutes of actual). For this tabular time-series task
-              with well-engineered features, deep learning offered no advantage.
+              LightGBM achieved lower error than basic LSTM and TCN architectures on every route,
+              with a 77.7% hit rate (predictions within 15 minutes of actual). For this tabular
+              time-series task with well-engineered features, deep learning offered no advantage.
+              However, recent research suggests hybrid architectures combining CNNs, LSTMs, and
+              graph neural networks can outperform gradient boosting by capturing spatio-temporal
+              dependencies across airport networks (<a href="https://link.springer.com/article/10.1007/s44196-025-00932-2" target="_blank" rel="noopener noreferrer">Chen et al., 2025</a>).
             </li>
             <li>
               <strong>Feature engineering mattered more than model architecture.</strong> In our

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 
 const NAV_SECTIONS = [
-  { id: 'forecast', label: 'Forecasts' },
-  { id: 'model-comparison', label: 'Models' },
-  { id: 'feature-importance', label: 'Key Drivers' },
   { id: 'weather-impact', label: 'Weather' },
   { id: 'carrier-performance', label: 'Airlines' },
+  { id: 'forecast', label: 'Forecasts' },
+  { id: 'model-comparison', label: 'Models' },
   { id: 'error-analysis', label: 'Error Analysis' },
+  { id: 'feature-importance', label: 'Key Drivers' },
   { id: 'conclusion', label: 'Findings' },
   { id: 'methods', label: 'Methods' },
 ]

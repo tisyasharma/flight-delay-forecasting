@@ -263,6 +263,48 @@ def train_eval_tcn(df, features, target_col, fold, device):
     return calculate_delay_metrics(actuals, preds)
 
 
+def eval_naive(df, target_col, fold):
+    """Evaluates naive baseline (yesterday's delay) on one fold."""
+    from src.models.baselines import NaiveBaseline
+
+    train_df = df[df["date"] < fold["train_end"]]
+    test_df = df[(df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])]
+
+    if len(test_df) == 0:
+        return None
+
+    model = NaiveBaseline(target_col=target_col)
+    model.fit(train_df)
+    preds = model.predict(test_df)
+
+    valid_mask = preds.notna()
+    return calculate_delay_metrics(
+        test_df.loc[valid_mask, target_col].values,
+        preds[valid_mask].values
+    )
+
+
+def eval_moving_average(df, target_col, fold):
+    """Evaluates 7-day moving average baseline on one fold."""
+    from src.models.baselines import MovingAverageBaseline
+
+    train_df = df[df["date"] < fold["train_end"]]
+    test_df = df[(df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])]
+
+    if len(test_df) == 0:
+        return None
+
+    model = MovingAverageBaseline(window=7, target_col=target_col)
+    model.fit(train_df)
+    preds = model.predict(test_df)
+
+    valid_mask = preds.notna()
+    return calculate_delay_metrics(
+        test_df.loc[valid_mask, target_col].values,
+        preds[valid_mask].values
+    )
+
+
 def aggregate_fold_metrics(all_fold_metrics):
     """Computes mean and std for each metric across folds."""
     metric_keys = ["mae", "rmse", "r2", "within_15", "median_ae"]
@@ -302,6 +344,8 @@ def main():
     print(f"{len(WALK_FORWARD_FOLDS)} folds\n")
 
     models = {
+        "naive": {"func": eval_naive, "features": None},
+        "ma": {"func": eval_moving_average, "features": None},
         "xgboost": {"func": train_eval_xgboost, "features": tabular_features},
         "lightgbm": {"func": train_eval_lightgbm, "features": tabular_features},
         "lstm": {"func": train_eval_lstm, "features": seq_features},
@@ -316,7 +360,9 @@ def main():
         for model_name, config in models.items():
             print(f"  {model_name}...", end=" ", flush=True)
 
-            if model_name in ("lstm", "tcn"):
+            if model_name in ("naive", "ma"):
+                metrics = config["func"](df, target_col, fold)
+            elif model_name in ("lstm", "tcn"):
                 metrics = config["func"](df, config["features"], target_col, fold, device)
             else:
                 metrics = config["func"](df, config["features"], target_col, fold)

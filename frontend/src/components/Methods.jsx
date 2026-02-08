@@ -1,134 +1,215 @@
+import { useState } from 'react'
+
 function Methods() {
+  const [methodsExpanded, setMethodsExpanded] = useState(false)
+  const [limitationsExpanded, setLimitationsExpanded] = useState(false)
+
+  const keyFindings = [
+    {
+      number: '1',
+      content: <>Gradient boosting outperformed deep learning in this study. On a dataset of 50 high-volume U.S. routes with daily aggregated delays, XGBoost and LightGBM achieved lower error than LSTM and TCN architectures on every route, with a 77.7% hit rate. For this tabular time-series task with well-engineered features, deep learning offered no advantage. However, recent research suggests that hybrid architectures combining CNNs, LSTMs, and graph neural networks can outperform gradient boosting by capturing spatio-temporal dependencies across airport networks.<sup><a href="#ref-3">3</a></sup></>
+    },
+    {
+      number: '2',
+      content: 'Feature engineering mattered more than model architecture. In ablation testing, adding weather features reduced XGBoost MAE by 10.3%. Notably, gradient boosting without weather data still outperformed deep learning trained on the full feature set. Within each model family, performance differences were negligible, suggesting similar algorithmic ceilings rather than tuning limitations.'
+    },
+    {
+      number: '3',
+      content: 'Forecast difficulty varied widely across routes and seasons. MAE ranged from 3.8 minutes on HNL-OGG to 15.8 minutes on FLL-ATL, a fourfold spread. Hawaii inter-island routes with stable weather were the most predictable, while Northeast corridors and Atlanta hub connections were the most challenging. Spring was consistently the hardest season, while fall produced the lowest errors.'
+    },
+    {
+      number: '4',
+      content: 'Gradient boosting provides practical value for high-volume routes. A model combining lagged delay history and weather features produced reliable next-day forecasts that could support operational decisions such as gate assignment and crew scheduling. Real-world deployment would require broader route coverage and live data validation.'
+    }
+  ]
+
+  const methodologyItems = [
+    {
+      title: 'Data Processing',
+      content: <>Training data is sourced from the Bureau of Transportation Statistics On-Time Performance database<sup><a href="#ref-2">2</a></sup> and processed into daily average arrival delays per route. Models are trained on 50 high-volume directional routes to increase data diversity, with the top 20 routes by traffic volume displayed in the dashboard. Features include calendar variables, lagged delays from 1 to 28 days, rolling statistics, route-level aggregates, and weather features derived from hourly observations.</>
+    },
+    {
+      title: 'Data Continuity',
+      content: 'Days with zero flights are forward-filled up to seven days to preserve continuity in lag calculations. A strictly chronological split divides the data into training (January 2019 through December 2023), validation (January through June 2024), and test (July 2024 through June 2025) periods to prevent future data leakage. All aggregate statistics used for encoding and imputation are computed exclusively from the training period.'
+    },
+    {
+      title: 'Forecasting Models',
+      content: 'All models are trained as single global regressors on pooled route data, with route identity encoded as features rather than training separate per-route models. Baselines include naive lag-1 and seven-day moving average forecasts. We compare gradient boosting models (XGBoost and LightGBM) against deep learning approaches (LSTM with attention and TCN) to assess whether neural architectures provide an advantage over feature-based methods in this setting.'
+    },
+    {
+      title: 'Weather Integration',
+      content: <>Weather data is obtained from Open-Meteo's ERA5 reanalysis.<sup><a href="#ref-1">1</a></sup> Hourly conditions at origin and destination airports are aggregated into operating-hour features such as peak wind, precipitation totals, storm-hour counts, and morning and evening severity scores. This design allows models to distinguish brief high-impact events from persistent mild conditions.</>
+    },
+    {
+      title: 'Feature Design',
+      content: 'Gradient boosting models use the full engineered feature set. Sequence models use a curated subset focused on raw delay history, calendar features, and weather signals in 28-day sliding windows. Pre-computed lag and rolling statistics were excluded from neural networks to avoid redundancy with learned temporal representations, and constant route-level features were removed to reduce noise. Targets for LSTM and TCN models are standardized to prevent extreme delays from dominating the loss function.'
+    },
+    {
+      title: 'Hyperparameter Tuning',
+      content: <>All models are tuned using Optuna<sup><a href="#ref-4">4</a></sup> Bayesian optimization with validation MAE as the objective. Each architecture undergoes 50 trials. Neural network trials use early stopping via MedianPruner. Final tuned parameters are saved and reused in training scripts.</>
+    },
+    {
+      title: 'Validation Strategy',
+      content: 'In addition to evaluation on the held-out test period, a four-fold walk-forward validation is performed using expanding training windows and six-month test periods from January 2023 through December 2024. This provides confidence that reported performance reflects consistent behavior over time rather than a favorable single split.'
+    }
+  ]
+
+  const limitationItems = [
+    {
+      title: 'Daily Aggregation',
+      content: 'Delays are averaged per route per day, which masks flight-level variability and extreme outliers within a given day. Predicting individual flight delays would require a different modeling approach.'
+    },
+    {
+      title: 'Network Effects',
+      content: 'Routes are modeled independently, so network effects such as delay propagation through hubs are not captured. An outbound flight does not incorporate information about delays on inbound aircraft.'
+    },
+    {
+      title: 'Route Coverage',
+      content: 'The analysis focuses on 50 high-volume routes, representing a small fraction of U.S. domestic corridors. Performance on lower-volume or regional routes may differ substantially.'
+    },
+    {
+      title: 'Carrier Aggregation',
+      content: 'Each route aggregates flights across all operating carriers. Airline-specific operational differences are averaged out, even though carriers vary significantly in on-time performance. Including carrier identity could capture this variation.'
+    },
+    {
+      title: 'Extreme Delay Prediction',
+      content: 'All models struggle to predict extreme delay events. While they detect periods of elevated delay risk, they underpredict the magnitude of the most severe disruptions due to skewed delay distributions and the rarity of tail events in training data.'
+    }
+  ]
+
+  const INITIAL_SHOW = 3
+
+  const visibleMethods = methodsExpanded ? methodologyItems : methodologyItems.slice(0, INITIAL_SHOW)
+  const visibleLimitations = limitationsExpanded ? limitationItems : limitationItems.slice(0, INITIAL_SHOW)
+
+  const hiddenMethodsCount = methodologyItems.length - INITIAL_SHOW
+  const hiddenLimitationsCount = limitationItems.length - INITIAL_SHOW
+
   return (
     <section id="methods" className="section section--alt">
       <div className="container" data-aos="fade-up">
         <div className="methods-section">
+          <h2>Results Overview</h2>
+
+          <p style={{ marginBottom: 'var(--space-md)' }}>
+            This project evaluates whether modern machine learning models can provide actionable next-day delay forecasts for high-volume U.S. airline routes using daily aggregated data.
+          </p>
+
+          <p style={{ marginBottom: 'var(--space-md)' }}>
+            Across 50 major domestic routes, gradient boosting models consistently outperformed deep learning. XGBoost and LightGBM achieved lower error than LSTM and TCN models on every route, with a 77.7% hit rate, defined as predictions falling within ±15 minutes of the actual average delay.
+          </p>
+
+          <p style={{ marginBottom: 'var(--space-md)' }}>
+            Forecast difficulty varied substantially across corridors. Average error ranged from 3.8 minutes on HNL-OGG to 15.8 minutes on FLL-ATL, reflecting differences in weather volatility, congestion, and operational complexity. Seasonal effects were pronounced: spring consistently produced the highest forecast errors, while fall yielded the lowest, indicating meaningful seasonal variation in predictability across routes.
+          </p>
+
+          <p style={{ marginBottom: 'var(--space-lg)' }}>
+            For the routes studied, a gradient boosting model incorporating lagged delay history and weather features produced forecasts that are operationally useful for planning tasks such as gate assignment and crew scheduling. Broader deployment would require validation on additional routes and integration with live operational data.
+          </p>
+        </div>
+
+        <div className="methods-section" style={{ marginTop: 'var(--space-3xl)' }}>
+          <h2>Key Findings</h2>
+
+          <ol className="key-findings-list">
+            {keyFindings.map((item) => (
+              <li key={item.number} className="key-findings-list__item">
+                {item.content}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="methods-section" style={{ marginTop: 'var(--space-3xl)' }}>
           <h2>Methodology</h2>
 
           <dl className="methods-list">
-            <div className="methods-list__item">
-              <dt>Data Processing</dt>
-              <dd>
-                Training data comes from the BTS On-Time Performance database<sup><a href="#ref-4">4</a></sup>, processed into daily arrival delay
-                averages per route. Models are trained on 50 routes to increase data diversity, with the top 20 by
-                traffic volume displayed in the dashboard. Features include temporal patterns, lag values (1-28 days),
-                rolling statistics, route characteristics, and weather features (including hourly-derived operating-hour
-                aggregates). Days with zero flights have delay values forward-filled up to 7 days to avoid gaps in lag
-                calculations. A chronological split divides the data into training (Jan 2019 - Dec 2023), validation
-                (Jan 2024 - Jun 2024), and test (Jul 2024 - Jun 2025) periods to prevent future data from leaking into
-                training. Route-level aggregate statistics used for imputation and encoding are computed exclusively from
-                the training period.
-              </dd>
-            </div>
-            <div className="methods-list__item">
-              <dt>Forecasting Models</dt>
-              <dd>
-                All four models are trained as single global regressors on all 50 routes pooled together,
-                with route identity captured through encoded features rather than building separate per-route models.
-                We compare baselines (naive lag-1, 7-day moving average), gradient boosting (XGBoost, LightGBM),
-                and deep learning (LSTM with attention, TCN). The central question is whether deep learning
-                provides any advantage over gradient boosting for this type of tabular time series, or if
-                well-engineered features are sufficient on their own.
-              </dd>
-            </div>
-            <div className="methods-list__item">
-              <dt>Weather Integration</dt>
-              <dd>
-                Weather conditions at origin and destination airports come from Open-Meteo's ERA5
-                reanalysis<sup><a href="#ref-3">3</a></sup>. Hourly data is aggregated into operating-hour
-                features (peak wind, precipitation, storm-hour counts, morning/evening severity scores)
-                that complement daily summaries. This lets models distinguish between all-day drizzle
-                and a brief thunderstorm during peak departure hours.
-              </dd>
-            </div>
-            <div className="methods-list__item">
-              <dt>Feature Design</dt>
-              <dd>
-                Gradient boosting models (XGBoost, LightGBM) use the full feature set including explicit lags,
-                rolling statistics, route metadata, and all weather features. The sequence models (LSTM, TCN) use a
-                curated subset focused on the raw delay signal, calendar, weather, and hourly-derived severity features
-                in 28-day sliding windows. Pre-computed lag and rolling features conflicted with the temporal patterns
-                the networks learn from the input window, and constant route-level features added noise without useful
-                variation across timesteps. LSTM and TCN targets are standardized to prevent MSE loss from being
-                dominated by high-delay outliers.
-              </dd>
-            </div>
-            <div className="methods-list__item">
-              <dt>Hyperparameter Tuning</dt>
-              <dd>
-                All four model architectures are tuned with Optuna<sup><a href="#ref-5">5</a></sup> Bayesian optimization (50 trials each) using
-                validation MAE as the objective. Search spaces include learning rate, regularization strength,
-                tree depth / network width, and dropout. Neural network trials use MedianPruner for early
-                termination of underperforming configurations. Tuned parameters are saved as JSON and loaded
-                automatically by the training scripts.
-              </dd>
-            </div>
-            <div className="methods-list__item">
-              <dt>Validation Strategy</dt>
-              <dd>
-                In addition to the primary held-out test period, a 4-fold walk-forward validation is performed
-                with expanding training windows (6-month test periods from Jan 2023 through Dec 2024). This
-                provides mean and standard deviation estimates for each metric across different time windows,
-                giving confidence that reported performance is not an artifact of a single favorable test period.
-                The final production models are trained on all data through Dec 2023 and evaluated on the
-                Jul 2024 - Jun 2025 test set.
-              </dd>
-            </div>
+            {visibleMethods.map((item, index) => (
+              <div
+                key={item.title}
+                className="methods-list__item"
+                style={{
+                  animation: methodsExpanded && index >= INITIAL_SHOW
+                    ? `methodFadeIn 0.3s ease ${(index - INITIAL_SHOW) * 0.05}s forwards`
+                    : 'none',
+                  opacity: methodsExpanded && index >= INITIAL_SHOW ? 0 : 1
+                }}
+              >
+                <dt>{item.title}</dt>
+                <dd>{item.content}</dd>
+              </div>
+            ))}
           </dl>
+
+          {hiddenMethodsCount > 0 && (
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--space-md)', paddingTop: 'var(--space-sm)' }}>
+              <button
+                onClick={() => setMethodsExpanded(!methodsExpanded)}
+                aria-expanded={methodsExpanded}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '4px 0',
+                  color: 'var(--text-muted)',
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}
+              >
+                <span style={{ transform: methodsExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', fontSize: '10px' }}>&#9654;</span>
+                {methodsExpanded ? 'Hide methods' : `View ${hiddenMethodsCount} additional methods`}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="methods-section" style={{ marginTop: 'var(--space-3xl)' }}>
           <h2>Limitations</h2>
 
           <dl className="methods-list">
-            <div className="methods-list__item">
-              <dt>Daily Aggregation</dt>
-              <dd>
-                Delays are averaged per route per day, which masks flight-level variation and extreme outliers
-                within a single day. A route showing 10 minutes average delay could contain flights ranging
-                from 60 minutes early to 3 hours late. Individual flight predictions would require a different
-                modeling approach.
-              </dd>
-            </div>
-            <div className="methods-list__item">
-              <dt>Network Effects</dt>
-              <dd>
-                Each route is modeled independently. Delay propagation across the airline network, where an
-                upstream delay at a hub cascades to connecting flights, is not captured. A flight departing
-                Atlanta for Miami does not know that the inbound aircraft was delayed in Chicago.
-              </dd>
-            </div>
-            <div className="methods-list__item">
-              <dt>Route Coverage</dt>
-              <dd>
-                Models are trained on 50 high-volume directional routes, with the top 20 displayed in the
-                dashboard. These represent a small fraction of all U.S. domestic corridors. Performance on
-                lower-volume routes, regional corridors, or routes with different carrier mixes may differ
-                substantially from what is shown here.
-              </dd>
-            </div>
-            <div className="methods-list__item">
-              <dt>Carrier Aggregation</dt>
-              <dd>
-                Each route aggregates flights across all carriers operating that corridor. A LAX-JFK forecast
-                reflects the combined performance of Delta, American, United, and JetBlue on that route. As shown
-                in the Carrier Performance section, airlines vary significantly in on-time rates, but these
-                carrier-specific effects are averaged out in our route-level predictions. A model that includes
-                carrier identity as a feature could capture this variation.
-              </dd>
-            </div>
-            <div className="methods-list__item">
-              <dt>Extreme Delay Prediction</dt>
-              <dd>
-                All models struggle to predict delays at their extremes. While they effectively identify when a
-                larger-than-typical delay is upcoming, they consistently underpredict the severity of extreme
-                events. This is inherent to regression models trained on skewed distributions: optimizing for
-                average loss pulls predictions toward central tendencies, extreme delays are rare in training
-                data so tail patterns are learned less robustly, and tree-based models cannot extrapolate beyond
-                values seen in their leaf nodes.
-              </dd>
-            </div>
+            {visibleLimitations.map((item, index) => (
+              <div
+                key={item.title}
+                className="methods-list__item"
+                style={{
+                  animation: limitationsExpanded && index >= INITIAL_SHOW
+                    ? `methodFadeIn 0.3s ease ${(index - INITIAL_SHOW) * 0.05}s forwards`
+                    : 'none',
+                  opacity: limitationsExpanded && index >= INITIAL_SHOW ? 0 : 1
+                }}
+              >
+                <dt>{item.title}</dt>
+                <dd>{item.content}</dd>
+              </div>
+            ))}
           </dl>
+
+          {hiddenLimitationsCount > 0 && (
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: 'var(--space-md)', paddingTop: 'var(--space-sm)' }}>
+              <button
+                onClick={() => setLimitationsExpanded(!limitationsExpanded)}
+                aria-expanded={limitationsExpanded}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '4px 0',
+                  color: 'var(--text-muted)',
+                  fontSize: '13px',
+                  fontWeight: '500'
+                }}
+              >
+                <span style={{ transform: limitationsExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', fontSize: '10px' }}>&#9654;</span>
+                {limitationsExpanded ? 'Hide limitations' : `View ${hiddenLimitationsCount} additional limitations`}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>

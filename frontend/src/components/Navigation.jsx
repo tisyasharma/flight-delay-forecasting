@@ -6,9 +6,8 @@ const NAV_SECTIONS = [
   { id: 'forecast', label: 'Forecasts' },
   { id: 'model-comparison', label: 'Models' },
   { id: 'error-analysis', label: 'Error Analysis' },
-  { id: 'feature-importance', label: 'Key Drivers' },
-  { id: 'conclusion', label: 'Findings' },
-  { id: 'methods', label: 'Methods' },
+  { id: 'feature-importance', label: 'Features' },
+  { id: 'methods', label: 'Results' },
 ]
 
 function Navigation() {

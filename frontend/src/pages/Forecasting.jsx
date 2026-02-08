@@ -3,7 +3,6 @@ import Hero from '../components/Hero'
 import ForecastChart from '../components/ForecastChart'
 import ModelComparison from '../components/ModelComparison'
 import ErrorAnalysis from '../components/ErrorAnalysis'
-import Conclusion from '../components/Conclusion'
 import FeatureImportance from '../components/FeatureImportance'
 import WeatherImpactChart from '../components/WeatherImpactChart'
 import CarrierPerformance from '../components/CarrierPerformance'
@@ -39,7 +38,14 @@ function Forecasting() {
       <Hero
         kicker="Route Delay Forecasting"
         title="Forecasting U.S. Route-Level Flight Delays"
-        subtitle={<>A single delayed flight can ripple across an airline's network, affecting connecting passengers, crew schedules, and aircraft availability for hours.<sup><a href="#ref-1">1</a></sup> When operations teams know a delay is coming, they can rebook passengers earlier, move crew to cover later flights, and load the right amount of fuel instead of guessing. Airports benefit too, using arrival forecasts to assign gates more efficiently and keep ground crews ready.<sup><a href="#ref-2">2</a></sup> This project explores whether machine learning can predict tomorrow's average arrival delay for a given route, giving airlines and airports the advance warning they need to stay ahead of disruptions.</>}
+        subtitle={<>
+          <span style={{ display: 'block', marginBottom: 'var(--space-md)' }}>
+            Flight delays rarely happen in isolation. On any given day, weather, congestion, and network pressure combine to create predictable patterns of disruption across specific routes. When operations teams know in advance that a route is likely to experience delays, they can proactively rebook passengers, adjust crew assignments, and plan gate usage more effectively.
+          </span>
+          <span style={{ display: 'block' }}>
+            This project explores whether machine learning can forecast tomorrow's average arrival delay for a given route, providing airlines and airports with early warning signals to manage downstream disruptions.
+          </span>
+        </>}
       />
 
       <div className="data-source-bar">
@@ -79,7 +85,6 @@ function Forecasting() {
       <ModelComparison forecastData={forecastData} loading={forecastLoading} error={forecastError} />
       <ErrorAnalysis forecastData={forecastData} loading={forecastLoading} error={forecastError} />
       <FeatureImportance />
-      <Conclusion />
       <Methods />
       <References />
       <Footer />

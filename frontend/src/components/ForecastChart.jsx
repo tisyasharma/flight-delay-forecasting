@@ -274,7 +274,7 @@ function ForecastChart({ forecastData, loading, error }) {
       .attr('y', 0)
       .attr('width', showSplit ? splitX : 0)
       .attr('height', mainHeight)
-      .attr('fill', 'var(--bg-tertiary)')
+      .attr('fill', 'var(--bg-base-soft)')
       .attr('opacity', 0.3)
       .style('display', showSplit ? null : 'none')
 
@@ -718,7 +718,13 @@ function ForecastChart({ forecastData, loading, error }) {
               </p>
             </div>
 
-            <div className="forecast-summary">
+            <div className="forecast-summary" style={{ justifyContent: 'center' }}>
+              <div style={{ marginBottom: 'var(--space-md)', marginTop: 'calc(-1 * var(--space-lg))', marginLeft: 'calc(-1 * var(--space-lg))', marginRight: 'calc(-1 * var(--space-lg))', padding: 'var(--space-sm) var(--space-lg)', background: 'var(--bg-base-soft)', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Test Period (Jul 2024 - Jun 2025)
+                </span>
+              </div>
+
               <div className="summary-header">
                 <span className="summary-header__model">{modelName}</span>
                 <span className="summary-header__route">{selectedRoute}</span>
@@ -731,14 +737,14 @@ function ForecastChart({ forecastData, loading, error }) {
                     <span className="metric-row__dot metric-row__dot--mae"></span>
                     MAE
                   </span>
-                  <span className="metric-row__value">{metrics?.route?.mae?.toFixed(1) ?? '-'}</span>
+                  <span className="metric-row__value">{metrics?.route?.mae ? `${metrics.route.mae.toFixed(2)} min` : '-'}</span>
                 </div>
                 <div className="metric-row">
                   <span className="metric-row__label">
                     <span className="metric-row__dot metric-row__dot--rmse"></span>
                     RMSE
                   </span>
-                  <span className="metric-row__value">{metrics?.route?.rmse?.toFixed(1) ?? '-'}</span>
+                  <span className="metric-row__value">{metrics?.route?.rmse ? `${metrics.route.rmse.toFixed(2)} min` : '-'}</span>
                 </div>
                 <div className="metric-row">
                   <span
@@ -750,27 +756,27 @@ function ForecastChart({ forecastData, loading, error }) {
                     <span className="metric-row__dot metric-row__dot--within15"></span>
                     Hit Rate
                   </span>
-                  <span className="metric-row__value">{metrics?.route?.within_15 ? `${metrics.route.within_15.toFixed(1)}%` : '-'}</span>
+                  <span className="metric-row__value">{metrics?.route?.within_15 ? `${metrics.route.within_15.toFixed(2)}%` : '-'}</span>
                 </div>
               </div>
 
               {metrics?.overall && (
                 <div className="summary-section">
-                  <div className="summary-section__title">Overall Model</div>
+                  <div className="summary-section__title">Overall Test Metrics</div>
                   <div className="forecast-summary-metrics">
                     <div className="metric-row">
                       <span className="metric-row__label">
                         <span className="metric-row__dot metric-row__dot--mae"></span>
                         MAE
                       </span>
-                      <span className="metric-row__value">{metrics.overall.mae?.toFixed(1)}</span>
+                      <span className="metric-row__value">{metrics.overall.mae?.toFixed(2)} min</span>
                     </div>
                     <div className="metric-row">
                       <span className="metric-row__label">
                         <span className="metric-row__dot metric-row__dot--rmse"></span>
                         RMSE
                       </span>
-                      <span className="metric-row__value">{metrics.overall.rmse?.toFixed(1)}</span>
+                      <span className="metric-row__value">{metrics.overall.rmse?.toFixed(2)} min</span>
                     </div>
                     <div className="metric-row">
                       <span
@@ -782,7 +788,7 @@ function ForecastChart({ forecastData, loading, error }) {
                         <span className="metric-row__dot metric-row__dot--within15"></span>
                         Hit Rate
                       </span>
-                      <span className="metric-row__value">{metrics.overall.within_15?.toFixed(1)}%</span>
+                      <span className="metric-row__value">{metrics.overall.within_15?.toFixed(2)}%</span>
                     </div>
                   </div>
                 </div>

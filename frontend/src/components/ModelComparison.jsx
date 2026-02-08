@@ -3,15 +3,25 @@ import { MODEL_COLORS } from '../utils/constants.js'
 
 function ModelComparison({ forecastData, loading, error }) {
   const modelResults = useMemo(() => {
-    if (!forecastData?.models) return []
-    return Object.entries(forecastData.models).map(([key, model]) => ({
-      model: model.name,
-      mae: model.metrics.overall.mae,
-      within_15: model.metrics.overall.within_15,
-      rmse: model.metrics.overall.rmse,
-      median_ae: model.metrics.overall.median_ae,
-      threshold_acc: model.metrics.overall.threshold_acc,
-      r2: model.metrics.overall.r2,
+    if (!forecastData?.walk_forward?.models) return []
+
+    const wfModels = forecastData.walk_forward.models
+    const modelNameMap = {
+      naive: 'Naive',
+      ma: 'Moving Average',
+      xgboost: 'XGBoost',
+      lightgbm: 'LightGBM',
+      lstm: 'LSTM',
+      tcn: 'TCN'
+    }
+
+    return Object.entries(wfModels).map(([key, metrics]) => ({
+      model: modelNameMap[key] || key,
+      mae: metrics.mae.mean,
+      within_15: metrics.within_15.mean,
+      rmse: metrics.rmse.mean,
+      median_ae: metrics.median_ae.mean,
+      r2: metrics.r2.mean,
     }))
   }, [forecastData])
 
@@ -88,8 +98,8 @@ function ModelComparison({ forecastData, loading, error }) {
   const renderHorizontalBar = (item, metric, max, isBest, showBestBadge) => {
     const value = item[metric]
     const displayValue = metric === 'within_15'
-      ? `${value.toFixed(1)}%`
-      : `${value.toFixed(1)} min`
+      ? `${value.toFixed(2)}%`
+      : `${value.toFixed(2)} min`
 
     const barColor = MODEL_COLORS[item.model] || '#64748b'
 
@@ -119,10 +129,15 @@ function ModelComparison({ forecastData, loading, error }) {
         <p className="kicker">Performance</p>
         <h2>Model Comparison</h2>
         <p style={{ marginBottom: 'var(--space-xl)' }}>
-          Four machine learning approaches compared on forecast error (MAE, lower is better) and hit rate, the percentage of daily route-level forecasts falling within a ±15-minute threshold. Two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN) are evaluated on the held-out test period (July 2024 through June 2025). Overall metrics are computed across all 50 training routes. Baselines (naive lag-1 at 14.9 min MAE, 7-day moving average at 13.6 min MAE) are excluded from the visualization but inform the improvement calculations below.
+          Four machine learning approaches compared on forecast error (MAE, lower is better) and hit rate, the percentage of daily route-level forecasts falling within a ±15-minute threshold. Two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN) are evaluated using 4-fold walk-forward cross-validation (2023-2024). Overall metrics are computed across all 50 training routes. Baselines (naive lag-1 at 15.09 min MAE, 7-day moving average at 13.53 min MAE) are excluded from the visualization but inform the improvement calculations below.
         </p>
 
         <div className="viz-card model-comparison-card" style={{ height: 'auto', padding: 0 }}>
+          <div style={{ padding: 'var(--space-sm) var(--space-lg)', borderBottom: '1px solid var(--border)', background: 'var(--bg-base-soft)' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Walk-Forward Validation (2023-2024)
+            </span>
+          </div>
           <div style={{ padding: 'var(--space-md) var(--space-lg)', borderBottom: '1px solid var(--border)', background: 'var(--bg-base-soft)' }}>
             <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
               MAE (Mean Absolute Error)
@@ -170,7 +185,7 @@ function ModelComparison({ forecastData, loading, error }) {
             <p>{(() => {
               if (!baseline || !bestMAE) return 'Best models significantly outperform baselines.'
               const improvement = ((baseline.mae - bestMAE.mae) / baseline.mae * 100).toFixed(0)
-              return `${bestWithin15.within_15.toFixed(1)}% of gradient boosting predictions land within 15 minutes of actual delays. This represents a ${improvement}% reduction in forecast error compared to the naive baseline.`
+              return `${bestWithin15.within_15.toFixed(2)}% of gradient boosting predictions land within 15 minutes of actual delays. This represents a ${improvement}% reduction in forecast error compared to the naive baseline.`
             })()}</p>
           </div>
           <div className="finding-card finding-card--cyan">
@@ -179,8 +194,8 @@ function ModelComparison({ forecastData, loading, error }) {
               const xgb = modelResults.find(m => m.model === 'XGBoost')
               const lstm = modelResults.find(m => m.model === 'LSTM')
               if (!xgb || !lstm) return 'Gradient boosting outperforms deep learning.'
-              const hitRateGap = (bestWithin15.within_15 - lstm.within_15).toFixed(1)
-              return `On this dataset, gradient boosting outperformed deep learning by ${hitRateGap} percentage points on hit rate (${bestWithin15.within_15.toFixed(1)}% vs ${lstm.within_15.toFixed(1)}%). Within each category, algorithm choice barely mattered: XGBoost and LightGBM tied at ${xgb.mae.toFixed(1)} min MAE, and LSTM and TCN tied at ${lstm.mae.toFixed(1)} min.`
+              const hitRateGap = (bestWithin15.within_15 - lstm.within_15).toFixed(2)
+              return `On this dataset, gradient boosting outperformed deep learning by ${hitRateGap} percentage points on hit rate (${bestWithin15.within_15.toFixed(2)}% vs ${lstm.within_15.toFixed(2)}%). Within each category, algorithm choice barely mattered: XGBoost and LightGBM tied at ${xgb.mae.toFixed(2)} min MAE, and LSTM and TCN tied at ${lstm.mae.toFixed(2)} min.`
             })()}</p>
           </div>
           <div className="finding-card finding-card--orange">
@@ -188,7 +203,7 @@ function ModelComparison({ forecastData, loading, error }) {
             <p>{(() => {
               const lstm = modelResults.find(m => m.model === 'LSTM')
               if (!lstm) return 'Feature engineering drives model performance.'
-              return `In our ablation study, gradient boosting without weather data still outperformed deep learning with the full feature set (${lstm.mae.toFixed(1)} min MAE). Weather features alone accounted for a 10.3% improvement in XGBoost performance.`
+              return `In our ablation study, gradient boosting without weather data still outperformed deep learning with the full feature set (${lstm.mae.toFixed(2)} min MAE). Weather features alone accounted for a 10.3% improvement in XGBoost performance.`
             })()}</p>
           </div>
         </div>

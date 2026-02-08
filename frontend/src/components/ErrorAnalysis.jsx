@@ -696,6 +696,11 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
         </p>
 
         <div className="viz-card" style={{ height: 'auto', padding: 0 }}>
+          <div style={{ padding: 'var(--space-sm) var(--space-lg)', borderBottom: '1px solid var(--border)', background: 'var(--bg-base-soft)' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Test Period (Jul 2024 - Jun 2025)
+            </span>
+          </div>
           <div style={{ display: 'flex', padding: 'var(--space-md) var(--space-lg)', borderBottom: '1px solid var(--border)', background: 'var(--bg-base-soft)', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-sm)' }}>
             <div className="segmented-control">
               <button
@@ -792,7 +797,7 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
             <div className="finding-card finding-card--red">
               <h4>Atlanta Hub and Northeast Struggle</h4>
               <p>
-                Routes involving Atlanta (FLL-ATL, MCO-ATL) and the Northeast corridor (DCA-BOS, LGA-ORD) show the highest errors, exceeding 14 minutes MAE. Weather volatility and hub congestion make these corridors harder to forecast.
+                Routes involving Atlanta (FLL-ATL, MCO-ATL) and the LGA-ORD corridor show the highest errors, exceeding 14 minutes MAE. Weather volatility and hub congestion make these corridors harder to forecast.
               </p>
             </div>
           </div>
@@ -802,7 +807,7 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
           <div className="findings-grid findings-grid--3">
             <div className="finding-card finding-card--blue">
               <h4>Consistent Advantage</h4>
-              <p>Gradient boosting outperforms deep learning on every route in the test set, with an average margin of 2.8 minutes MAE. The advantage holds regardless of route characteristics.</p>
+              <p>Gradient boosting outperforms deep learning on every route in the test set, with an average margin of 1.49 minutes MAE. The advantage holds regardless of route characteristics.</p>
             </div>
             <div className="finding-card finding-card--cyan">
               <h4>Largest Gaps</h4>

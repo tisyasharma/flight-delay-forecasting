@@ -11,12 +11,12 @@ Flight delay forecasting for the 50 busiest U.S. routes using XGBoost, LightGBM,
 
 | Model | MAE | Hit Rate |
 |-------|-----|----------|
-| XGBoost | 10.9 min | 79.6% |
-| LightGBM | 10.9 min | 79.4% |
-| LSTM | 13.1 min | 75.2% |
-| TCN | 13.1 min | 75.2% |
+| XGBoost | 11.25 min | 77.6% |
+| LightGBM | 11.25 min | 77.7% |
+| LSTM | 12.69 min | 74.42% |
+| TCN | 12.79 min | 72.65% |
 
-Gradient boosting outperformed deep learning on every route tested. Removing weather features increased error by 10.3%, the largest impact of any feature group.
+Metrics from 4-fold walk-forward cross-validation (2023-2024). Gradient boosting outperformed deep learning on every route tested. Removing weather features increased error by 10.3%, the largest impact of any feature group that was created for this project.
 
 ## Data
 

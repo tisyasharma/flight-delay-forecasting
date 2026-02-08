@@ -157,7 +157,7 @@ function WeatherImpactChart() {
         .attr('font-weight', '700')
         .attr('font-variant-numeric', 'tabular-nums')
         .attr('opacity', 0)
-        .text(`${d.avg_delay > 0 ? '+' : ''}${d.avg_delay.toFixed(1)}`)
+        .text(`${d.avg_delay > 0 ? '+' : ''}${d.avg_delay.toFixed(1)} min`)
         .transition()
         .duration(300)
         .delay(i * 70 + 400)

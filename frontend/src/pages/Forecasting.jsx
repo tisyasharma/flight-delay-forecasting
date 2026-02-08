@@ -75,10 +75,10 @@ function Forecasting() {
 
       <WeatherImpactChart />
       <CarrierPerformance />
-      <FeatureImportance />
       <ForecastChart forecastData={forecastData} loading={forecastLoading} error={forecastError} />
       <ModelComparison forecastData={forecastData} loading={forecastLoading} error={forecastError} />
       <ErrorAnalysis forecastData={forecastData} loading={forecastLoading} error={forecastError} />
+      <FeatureImportance />
       <Conclusion />
       <Methods />
       <References />

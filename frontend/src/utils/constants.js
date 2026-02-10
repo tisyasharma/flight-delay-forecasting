@@ -21,12 +21,12 @@ export const CARRIER_ALIASES = {
 };
 
 export const MODEL_COLORS = {
-  XGBoost: '#1e40af',
-  LightGBM: '#513288',
-  LSTM: '#842362',
-  TCN: '#c8102e',
-  'Moving Average': '#9ca3af',
-  Naive: '#6b7280',
+  XGBoost: '#d97706',
+  LightGBM: '#ea580c',
+  LSTM: '#dc2626',
+  TCN: '#b91c1c',
+  'Moving Average': '#78716c',
+  Naive: '#a8a29e',
 }
 
 // Colorblind-friendly palette with 22 distinct colors (cool/neutral, on-theme)

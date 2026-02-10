@@ -746,8 +746,8 @@ sup a[href^="#ref-"]:hover {
   }
 
   .model-bar__name {
-    width: 70px;
-    font-size: 12px;
+    width: 85px;
+    font-size: 11px;
   }
 
   .model-bar__track {
@@ -1567,11 +1567,12 @@ sup a[href^="#ref-"]:hover {
 }
 
 .model-bar__name {
-  width: 100px;
+  width: 120px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .model-bar__track {
@@ -1615,6 +1616,11 @@ sup a[href^="#ref-"]:hover {
 
 .model-bar__badge--best {
   background: var(--green);
+  color: white;
+}
+
+.model-bar__badge--baseline {
+  background: var(--text-muted);
   color: white;
 }
 
@@ -2243,7 +2249,7 @@ sup a[href^="#ref-"]:hover {
   }
 
   .model-bar__name {
-    width: 80px;
+    width: 100px;
     font-size: 12px;
   }
 

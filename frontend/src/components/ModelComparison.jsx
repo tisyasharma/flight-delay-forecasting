@@ -56,6 +56,8 @@ function ModelComparison({ forecastData, loading, error }) {
   const baseline = modelResults.find(m => m.model === 'Naive')
   const BASELINE_NAMES = ['Naive', 'Moving Average']
   const mlModels = modelResults.filter(m => !BASELINE_NAMES.includes(m.model))
+  const baselineModels = modelResults.filter(m => BASELINE_NAMES.includes(m.model))
+  const allModels = [...mlModels, ...baselineModels]
 
   if (mlModels.length === 0) {
     return (
@@ -71,8 +73,8 @@ function ModelComparison({ forecastData, loading, error }) {
     )
   }
 
-  const sortedByMAE = [...mlModels].sort((a, b) => a.mae - b.mae)
-  const sortedByWithin15 = [...mlModels].sort((a, b) => b.within_15 - a.within_15)
+  const sortedByMAE = [...allModels].sort((a, b) => a.mae - b.mae)
+  const sortedByWithin15 = [...allModels].sort((a, b) => b.within_15 - a.within_15)
 
   const bestMAE = sortedByMAE[0]
   const bestWithin15 = sortedByWithin15[0]
@@ -80,8 +82,10 @@ function ModelComparison({ forecastData, loading, error }) {
   const MAE_THRESHOLD = 0.2
   const HIT_RATE_THRESHOLD = 0.5
 
-  const maeGap = sortedByMAE.length > 1 ? sortedByMAE[1].mae - bestMAE.mae : 0
-  const hitRateGap = sortedByWithin15.length > 1 ? bestWithin15.within_15 - sortedByWithin15[1].within_15 : 0
+  const mlModelsSorted = sortedByMAE.filter(m => !BASELINE_NAMES.includes(m.model))
+  const maeGap = mlModelsSorted.length > 1 ? mlModelsSorted[1].mae - mlModelsSorted[0].mae : 0
+  const mlModelsSortedHitRate = sortedByWithin15.filter(m => !BASELINE_NAMES.includes(m.model))
+  const hitRateGap = mlModelsSortedHitRate.length > 1 ? mlModelsSortedHitRate[0].within_15 - mlModelsSortedHitRate[1].within_15 : 0
 
   const showMAEBest = maeGap >= MAE_THRESHOLD
   const showHitRateBest = hitRateGap >= HIT_RATE_THRESHOLD
@@ -90,7 +94,7 @@ function ModelComparison({ forecastData, loading, error }) {
     ? ((baseline.mae - bestMAE.mae) / baseline.mae * 100).toFixed(1)
     : '0'
 
-  const maxMAE = Math.max(...mlModels.map(m => m.mae))
+  const maxMAE = Math.max(...allModels.map(m => m.mae))
   const maxWithin15 = 100
 
   const getBarWidth = (value, max) => `${(value / max) * 100}%`
@@ -101,6 +105,7 @@ function ModelComparison({ forecastData, loading, error }) {
       ? `${value.toFixed(2)}%`
       : `${value.toFixed(2)} min`
 
+    const isBaseline = BASELINE_NAMES.includes(item.model)
     const barColor = MODEL_COLORS[item.model] || '#64748b'
 
     return (
@@ -111,13 +116,15 @@ function ModelComparison({ forecastData, loading, error }) {
             className="model-bar__fill"
             style={{
               width: getBarWidth(Math.abs(value), max),
-              backgroundColor: barColor
+              backgroundColor: barColor,
+              opacity: isBaseline ? 0.6 : 1
             }}
           />
         </div>
         <span className="model-bar__value">{displayValue}</span>
         <span className="model-bar__badge-container">
-          {isBest && showBestBadge && <span className="model-bar__badge model-bar__badge--best">BEST</span>}
+          {isBaseline && <span className="model-bar__badge model-bar__badge--baseline">BASELINE</span>}
+          {isBest && showBestBadge && !isBaseline && <span className="model-bar__badge model-bar__badge--best">BEST</span>}
         </span>
       </div>
     )
@@ -182,7 +189,7 @@ function ModelComparison({ forecastData, loading, error }) {
         <div className="findings-grid findings-grid--3">
           <div className="finding-card finding-card--green">
             <h4>Best Performance</h4>
-            <p>Gradient boosting achieved the strongest overall performance, with 77.7% of forecasts falling within ±15 minutes of the observed delay and a 25% reduction in MAE relative to a naive baseline.</p>
+            <p>Gradient boosting achieved the strongest overall performance, with 77.7% of forecasts falling within ±15 minutes of the observed delay and a 26% reduction in MAE relative to a naive baseline.</p>
           </div>
           <div className="finding-card finding-card--cyan">
             <h4>Gradient Boosting vs Deep Learning</h4>

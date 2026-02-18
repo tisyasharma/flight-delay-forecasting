@@ -136,7 +136,7 @@ function ModelComparison({ forecastData, loading, error }) {
         <p className="kicker">Performance</p>
         <h2>Model Comparison</h2>
         <p style={{ marginBottom: 'var(--space-xl)' }}>
-          We evaluate four modeling approaches for next-day route-level delay forecasting using walk-forward cross-validation (2023-2024). The comparison includes two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN). Performance is assessed using MAE and hit rate, defined as the share of daily forecasts within ±15 minutes of the observed delay. Metrics are aggregated across all 50 training routes.
+          We evaluate four modeling approaches for next-day route-level delay forecasting using walk-forward validation (2023-2024). The comparison includes two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN). Performance is assessed using MAE and hit rate, defined as the share of daily forecasts within ±15 minutes of the observed delay. Metrics are aggregated across all 50 training routes.
         </p>
 
         <div className="viz-card model-comparison-card" style={{ height: 'auto', padding: 0 }}>
@@ -189,7 +189,7 @@ function ModelComparison({ forecastData, loading, error }) {
         <div className="findings-grid findings-grid--3">
           <div className="finding-card finding-card--green">
             <h4>Best Performance</h4>
-            <p>Gradient boosting achieved the strongest overall performance, with 77.7% of forecasts falling within ±15 minutes of the observed delay and a 26% reduction in MAE relative to a naive baseline.</p>
+            <p>Gradient boosting achieved the strongest overall performance, with 77.7% of forecasts falling within ±15 minutes of the observed delay and a 25% reduction in MAE relative to a naive baseline.</p>
           </div>
           <div className="finding-card finding-card--cyan">
             <h4>Gradient Boosting vs Deep Learning</h4>

@@ -1,4 +1,4 @@
-.PHONY: setup features train walk-forward forecast test lint
+.PHONY: setup features train train-quantile walk-forward forecast test lint
 
 setup:
 	pip install -e ".[dev,dl,track]"
@@ -9,6 +9,9 @@ features:
 train:
 	python -m src.training.train.train_lightgbm
 	python -m src.training.train.train_xgboost
+
+train-quantile:
+	python -m src.training.train.train_lightgbm_quantile
 
 walk-forward:
 	python -m src.training.walk_forward

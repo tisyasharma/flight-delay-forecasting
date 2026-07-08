@@ -12,7 +12,13 @@ from src.config import (
     DATA_START, SEQUENCE_LENGTH, WALK_FORWARD_FOLDS,
     TABULAR_FEATURES, SEQUENCE_MODEL_FEATURES,
 )
-from src.evaluation.metrics import calculate_delay_metrics
+from src.evaluation.metrics import (
+    calculate_delay_metrics,
+    calculate_quantile_metrics,
+    sort_quantile_predictions,
+)
+
+QUANTILE_ALPHAS = (0.1, 0.5, 0.9)
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -110,6 +116,58 @@ def train_eval_lightgbm(df, features, target_col, fold):
 
     preds = model.predict(test_df[features].values)
     return calculate_delay_metrics(test_df[target_col].values, preds)
+
+
+def train_eval_lightgbm_quantile(df, features, target_col, fold):
+    """
+    Trains one LightGBM per quantile on a fold, returns point metrics for the
+    median plus pinball/coverage for the sorted interval.
+    """
+    params = load_params("lightgbm")
+
+    train_df = df[df["date"] < fold["train_end"]].dropna(subset=features + [target_col])
+    val_df = df[
+        (df["date"] >= fold["train_end"]) & (df["date"] < fold["val_end"])
+    ].dropna(subset=features + [target_col])
+    test_df = df[
+        (df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])
+    ].dropna(subset=features + [target_col])
+
+    if len(test_df) == 0:
+        return None
+
+    base_params = {
+        "n_estimators": params.get("n_estimators", 500),
+        "num_leaves": params.get("num_leaves", 63),
+        "learning_rate": params.get("learning_rate", 0.1),
+        "subsample": params.get("subsample", 0.8),
+        "colsample_bytree": params.get("colsample_bytree", 0.8),
+        "min_child_samples": params.get("min_child_samples", 20),
+        "reg_alpha": params.get("reg_alpha", 1e-6),
+        "reg_lambda": params.get("reg_lambda", 1e-6),
+        "max_depth": -1,
+        "random_state": 42,
+        "n_jobs": -1,
+        "verbose": -1,
+    }
+
+    quantile_preds = []
+    for alpha in QUANTILE_ALPHAS:
+        model = lgb.LGBMRegressor(objective="quantile", alpha=alpha, **base_params)
+        model.fit(
+            train_df[features].values, train_df[target_col].values,
+            eval_set=[(val_df[features].values, val_df[target_col].values)],
+            eval_metric="quantile",
+            callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)],
+        )
+        quantile_preds.append(model.predict(test_df[features].values))
+
+    sorted_preds = sort_quantile_predictions(np.column_stack(quantile_preds))
+    y_test = test_df[target_col].values
+
+    metrics = calculate_delay_metrics(y_test, sorted_preds[:, len(QUANTILE_ALPHAS) // 2])
+    metrics.update(calculate_quantile_metrics(y_test, sorted_preds, alphas=QUANTILE_ALPHAS))
+    return metrics
 
 
 def train_eval_lstm(df, features, target_col, fold, device):
@@ -315,7 +373,10 @@ def eval_moving_average(df, target_col, fold):
 
 def aggregate_fold_metrics(all_fold_metrics):
     """Computes mean and std for each metric across folds."""
-    metric_keys = ["mae", "rmse", "r2", "within_15", "median_ae"]
+    metric_keys = [
+        "mae", "rmse", "r2", "within_15", "median_ae",
+        "coverage_80", "interval_width", "pinball_10", "pinball_50", "pinball_90",
+    ]
     result = {}
 
     for key in metric_keys:
@@ -369,6 +430,7 @@ def main():
         "ma": {"func": eval_moving_average, "features": None},
         "xgboost": {"func": train_eval_xgboost, "features": tabular_features},
         "lightgbm": {"func": train_eval_lightgbm, "features": tabular_features},
+        "lightgbm_q": {"func": train_eval_lightgbm_quantile, "features": tabular_features},
         "lstm": {"func": train_eval_lstm, "features": seq_features},
         "tcn": {"func": train_eval_tcn, "features": seq_features},
     }

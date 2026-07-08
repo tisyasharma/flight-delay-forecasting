@@ -1,4 +1,4 @@
-.PHONY: setup features train walk-forward forecast lint
+.PHONY: setup features train walk-forward forecast test lint
 
 setup:
 	pip install -e ".[dev,dl,track]"
@@ -16,5 +16,8 @@ walk-forward:
 forecast:
 	python -m src.training.generate_forecasts
 
+test:
+	pytest
+
 lint:
-	ruff check src
+	ruff check src tests

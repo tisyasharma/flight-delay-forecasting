@@ -6,6 +6,9 @@ data/raw/*.zip
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+build/
+.ruff_cache/
 
 # Jupyter
 .ipynb_checkpoints/

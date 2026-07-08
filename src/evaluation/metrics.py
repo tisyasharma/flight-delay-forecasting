@@ -33,6 +33,63 @@ def r_squared(y_true, y_pred):
     return 1 - (ss_res / ss_tot)
 
 
+def pinball_loss(y_true, y_pred, alpha):
+    """Quantile (pinball) loss, penalizes over- and under-prediction asymmetrically."""
+    diff = y_true - y_pred
+    return np.mean(np.maximum(alpha * diff, (alpha - 1) * diff))
+
+
+def interval_coverage(y_true, lower, upper):
+    """Percentage of actuals falling inside [lower, upper]."""
+    return np.mean((y_true >= lower) & (y_true <= upper)) * 100
+
+
+def interval_width(lower, upper):
+    """Average width of the prediction interval."""
+    return np.mean(upper - lower)
+
+
+def sort_quantile_predictions(quantile_preds):
+    """
+    Sorts each row's quantile predictions into ascending order. Independently
+    trained quantile models can cross (q10 above q90 on individual rows), and
+    row-wise sorting is the standard non-crossing fix.
+    """
+    return np.sort(np.asarray(quantile_preds, dtype=float), axis=1)
+
+
+def calculate_quantile_metrics(y_true, quantile_preds, alphas=(0.1, 0.5, 0.9)):
+    """
+    Pinball loss per quantile plus coverage and width of the outer interval.
+    quantile_preds is (n, len(alphas)) with columns ordered like alphas.
+    Same conventions as calculate_delay_metrics: rows with a NaN actual or a
+    NaN in any quantile column are masked, empty input returns all-None.
+    """
+    y_true = np.asarray(y_true, dtype=float).flatten()
+    preds = np.asarray(quantile_preds, dtype=float)
+
+    pinball_keys = [f"pinball_{int(round(a * 100))}" for a in alphas]
+    coverage_key = f"coverage_{int(round((alphas[-1] - alphas[0]) * 100))}"
+
+    mask = ~(np.isnan(y_true) | np.isnan(preds).any(axis=1))
+    y_true = y_true[mask]
+    preds = preds[mask]
+
+    if len(y_true) == 0:
+        result = {key: None for key in pinball_keys}
+        result[coverage_key] = None
+        result["interval_width"] = None
+        return result
+
+    result = {
+        key: float(pinball_loss(y_true, preds[:, i], alpha))
+        for i, (key, alpha) in enumerate(zip(pinball_keys, alphas))
+    }
+    result[coverage_key] = float(interval_coverage(y_true, preds[:, 0], preds[:, -1]))
+    result["interval_width"] = float(interval_width(preds[:, 0], preds[:, -1]))
+    return result
+
+
 def calculate_metrics(y_true, y_pred):
     """Basic regression metrics (RMSE, MAE, MAPE, R2)."""
     y_true = np.array(y_true).flatten()

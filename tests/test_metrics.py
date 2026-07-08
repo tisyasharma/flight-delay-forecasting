@@ -10,10 +10,15 @@ from src.evaluation.metrics import (
     calculate_delay_metrics,
     calculate_metrics,
     calculate_metrics_by_segment,
+    calculate_quantile_metrics,
+    interval_coverage,
+    interval_width,
     mae,
     mape,
+    pinball_loss,
     r_squared,
     rmse,
+    sort_quantile_predictions,
 )
 
 
@@ -111,3 +116,86 @@ def test_calculate_metrics_by_segment_matches_manual_slices():
     assert set(results) == {"east", "west"}
     assert results["east"] == calculate_metrics(y_true[:3], y_pred[:3])
     assert results["west"] == calculate_metrics(y_true[3:], y_pred[3:])
+
+
+def test_pinball_loss_asymmetry_known_values():
+    """Hand-checked pinball values on both sides of the actual."""
+    y_true = np.array([10.0])
+    assert np.isclose(pinball_loss(y_true, np.array([8.0]), 0.1), 0.2)
+    assert np.isclose(pinball_loss(y_true, np.array([12.0]), 0.1), 1.8)
+    assert np.isclose(pinball_loss(y_true, np.array([8.0]), 0.9), 1.8)
+    assert np.isclose(pinball_loss(y_true, np.array([12.0]), 0.9), 0.2)
+
+
+def test_pinball_loss_median_is_half_mae():
+    """At alpha 0.5 the pinball loss reduces to half the absolute error."""
+    y_true = np.array([1.0, 5.0, 10.0])
+    y_pred = np.array([2.0, 3.0, 10.0])
+    assert np.isclose(pinball_loss(y_true, y_pred, 0.5), mae(y_true, y_pred) / 2)
+
+
+def test_interval_coverage_and_width_known_values():
+    """Hand-checked coverage percentage (boundaries inclusive) and mean width."""
+    y_true = np.array([1.0, 2.0, 3.0, 4.0])
+    lower = np.array([0.0, 3.0, 2.0, 5.0])
+    upper = np.array([2.0, 4.0, 4.0, 6.0])
+    assert interval_coverage(y_true, lower, upper) == 50.0
+    assert np.isclose(interval_width(lower, upper), 1.5)
+
+
+def test_sort_quantile_predictions_fixes_crossing():
+    """Crossed rows get reordered, well-ordered rows pass through unchanged."""
+    preds = np.array([[3.0, 1.0, 2.0], [1.0, 2.0, 3.0]])
+    fixed = sort_quantile_predictions(preds)
+    assert (fixed == np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]])).all()
+    assert (np.diff(fixed, axis=1) >= 0).all()
+
+
+def test_calculate_quantile_metrics_known_values():
+    """Hand-checked pinball, coverage, and width on a tiny sorted matrix."""
+    y_true = np.array([10.0, 20.0])
+    preds = np.array([
+        [8.0, 10.0, 14.0],
+        [22.0, 25.0, 30.0],
+    ])
+    result = calculate_quantile_metrics(y_true, preds)
+
+    # first actual inside [8, 14], second outside [22, 30]
+    assert result["coverage_80"] == 50.0
+    assert np.isclose(result["interval_width"], 7.0)
+    assert np.isclose(result["pinball_10"], 1.0)
+    assert np.isclose(result["pinball_50"], 1.25)
+    assert np.isclose(result["pinball_90"], 0.7)
+
+
+def test_calculate_quantile_metrics_masks_nan_rows():
+    """A NaN in the actual or any quantile column drops that whole row."""
+    y_true = np.array([10.0, np.nan, 30.0])
+    preds = np.array([
+        [8.0, 10.0, 14.0],
+        [1.0, 2.0, 3.0],
+        [np.nan, 29.0, 33.0],
+    ])
+    result = calculate_quantile_metrics(y_true, preds)
+    clean = calculate_quantile_metrics(np.array([10.0]), np.array([[8.0, 10.0, 14.0]]))
+    assert result == clean
+
+
+def test_calculate_quantile_metrics_key_naming_rounds():
+    """Alpha 0.95 must produce pinball_95, float truncation would give 94."""
+    y_true = np.array([10.0])
+    preds = np.array([[8.0, 10.0, 12.0]])
+    result = calculate_quantile_metrics(y_true, preds, alphas=(0.05, 0.5, 0.95))
+    expected_keys = {"pinball_5", "pinball_50", "pinball_95", "coverage_90", "interval_width"}
+    assert set(result) == expected_keys
+
+
+def test_calculate_quantile_metrics_all_nan_returns_none_dict():
+    """Nothing surviving the mask returns the documented all-None dict."""
+    y_true = np.array([np.nan, np.nan])
+    preds = np.ones((2, 3))
+    expected = {
+        "pinball_10": None, "pinball_50": None, "pinball_90": None,
+        "coverage_80": None, "interval_width": None,
+    }
+    assert calculate_quantile_metrics(y_true, preds) == expected

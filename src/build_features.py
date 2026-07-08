@@ -1,31 +1,51 @@
-import sys
+import json
 from pathlib import Path
 
 import holidays
 import numpy as np
 import pandas as pd
 
-PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
 from src.config import COVID_START, COVID_PEAK_END, COVID_RECOVERY_END
 
+PROJECT_ROOT = Path(__file__).parent.parent
 PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
+MODELS_DIR = PROJECT_ROOT / "trained_models"
 
-US_HOLIDAYS = holidays.US(years=range(2019, 2027))
+HOLIDAY_YEARS_START = 2019
 
 
 class FeatureBuilder:
     """
     train_end_date controls leakage prevention: route stats and imputation
     only use data before this date.
+
+    Passing state (a dict from a previous export_state call) makes the builder
+    reuse train-time route encodings, route stats, and fill values instead of
+    recomputing them from df, so features for new dates match what the models
+    were trained on without needing the original training data.
     """
 
-    def __init__(self, df, train_end_date=None):
+    def __init__(self, df, train_end_date=None, state=None):
         self.df = df.copy()
         self.df["date"] = pd.to_datetime(self.df["date"])
         self.df = self.df.sort_values(["route", "date"]).reset_index(drop=True)
         self.train_end_date = pd.Timestamp(train_end_date) if train_end_date else None
+
+        self.state = state
+        if self.state is not None:
+            unknown = set(self.df["route"].unique()) - set(self.state["route_codes"])
+            if unknown:
+                raise ValueError(f"routes missing from feature state: {sorted(unknown)}")
+
+        # extend the calendar one year past the data so days_to_holiday never
+        # silently degrades to the 30-day cap for dates near the end of range
+        max_year = int(self.df["date"].dt.year.max())
+        self.us_holidays = holidays.US(years=range(HOLIDAY_YEARS_START, max_year + 2))
+
+        self._route_codes = None
+        self._route_stats = None
+        self._temp_fill_values = {}
+        self._lag_fill_medians = {}
 
     def add_temporal_features(self):
         self.df["day_of_week"] = self.df["date"].dt.dayofweek
@@ -48,9 +68,9 @@ class FeatureBuilder:
         return self
 
     def add_holiday_features(self):
-        self.df["is_federal_holiday"] = self.df["date"].isin(US_HOLIDAYS).astype(int)
+        self.df["is_federal_holiday"] = self.df["date"].isin(self.us_holidays).astype(int)
 
-        holiday_dates = pd.DatetimeIndex(sorted(US_HOLIDAYS.keys()))
+        holiday_dates = pd.DatetimeIndex(sorted(self.us_holidays.keys()))
         unique_dates = self.df["date"].unique()
 
         days_to = {}
@@ -138,6 +158,18 @@ class FeatureBuilder:
 
     def add_route_features(self):
         """Route-level stats computed on training data only to prevent leakage."""
+        if self.state is not None:
+            self._route_codes = dict(self.state["route_codes"])
+            self._route_stats = self.state["route_stats"]
+
+            self.df["route_encoded"] = self.df["route"].map(self._route_codes).astype(int)
+
+            stats = pd.DataFrame.from_dict(self._route_stats, orient="index")
+            stats.index.name = "route"
+            self.df = self.df.merge(stats.reset_index(), on="route", how="left")
+
+            return self
+
         self.df["route_encoded"] = self.df["route"].astype("category").cat.reorder_categories(
             sorted(self.df["route"].unique())
         ).cat.codes
@@ -159,13 +191,23 @@ class FeatureBuilder:
 
         self.df = self.df.merge(delay_stats, on="route", how="left")
 
+        self._route_codes = {
+            route: code for code, route in enumerate(sorted(self.df["route"].unique()))
+        }
+        combined = route_stats.join(delay_stats)
+        self._route_stats = {
+            route: {col: (float(val) if pd.notna(val) else None) for col, val in row.items()}
+            for route, row in combined.iterrows()
+        }
+
         return self
 
     def add_weather_features(self):
-        if self.train_end_date:
-            train_mask = self.df["date"] < self.train_end_date
-        else:
-            train_mask = pd.Series(True, index=self.df.index)
+        if self.state is None:
+            if self.train_end_date:
+                train_mask = self.df["date"] < self.train_end_date
+            else:
+                train_mask = pd.Series(True, index=self.df.index)
 
         # missing severity = clear weather
         severity_cols = [
@@ -177,8 +219,12 @@ class FeatureBuilder:
 
         # temps: fill with training median
         for col in ["apt1_temp_avg", "apt2_temp_avg"]:
-            train_median = self.df.loc[train_mask, col].median()
-            fill_value = train_median if pd.notna(train_median) else 50.0
+            if self.state is not None:
+                fill_value = self.state["temp_fill_values"][col]
+            else:
+                train_median = self.df.loc[train_mask, col].median()
+                fill_value = train_median if pd.notna(train_median) else 50.0
+            self._temp_fill_values[col] = float(fill_value)
             self.df[col] = self.df[col].fillna(fill_value)
 
         # precip and wind default to 0
@@ -223,21 +269,53 @@ class FeatureBuilder:
     def fill_missing_values(self):
         lag_cols = [c for c in self.df.columns if c.startswith(("lag_", "rolling_", "ewm_"))]
 
-        if self.train_end_date:
-            train_mask = self.df["date"] < self.train_end_date
-            train_df = self.df[train_mask]
-        else:
-            train_df = self.df
+        if self.state is None:
+            if self.train_end_date:
+                train_mask = self.df["date"] < self.train_end_date
+                train_df = self.df[train_mask]
+            else:
+                train_df = self.df
 
         for col in lag_cols:
             if col.endswith("_std"):
                 self.df[col] = self.df[col].fillna(0)
             else:
-                train_medians = train_df.groupby("route")[col].median()
+                if self.state is not None:
+                    train_medians = pd.Series(self.state["lag_fill_medians"][col], dtype=float)
+                else:
+                    train_medians = train_df.groupby("route")[col].median()
+                self._lag_fill_medians[col] = {
+                    route: (float(val) if pd.notna(val) else None)
+                    for route, val in train_medians.items()
+                }
                 fill_values = self.df["route"].map(train_medians).fillna(0)
                 self.df[col] = self.df[col].fillna(fill_values)
 
         return self
+
+    def export_state(self):
+        """
+        Serializes everything the train window gated during build (route
+        encodings, route stats, imputation values) as a JSON-safe dict.
+        Requires build() to have run first.
+        """
+        if self._route_stats is None:
+            raise RuntimeError("export_state() requires build() to have been called")
+
+        if self.train_end_date is not None:
+            train_end = str(self.train_end_date.date())
+        elif self.state is not None:
+            train_end = self.state.get("train_end_date")
+        else:
+            train_end = None
+
+        return {
+            "train_end_date": train_end,
+            "route_codes": self._route_codes,
+            "route_stats": self._route_stats,
+            "temp_fill_values": self._temp_fill_values,
+            "lag_fill_medians": self._lag_fill_medians,
+        }
 
     def build(self):
         self.add_temporal_features()
@@ -251,7 +329,8 @@ class FeatureBuilder:
         return self.df
 
 
-def build_features(input_path=None, output_path=None, train_end_date="2024-01-01"):
+def build_features(input_path=None, output_path=None, train_end_date="2024-01-01",
+                   state_path=None):
     if input_path is None:
         input_path = PROCESSED_DATA_DIR / "daily_route_demand.csv"
 
@@ -269,8 +348,19 @@ def build_features(input_path=None, output_path=None, train_end_date="2024-01-01
     df_features.to_csv(output_path, index=False)
     print(f"Saved to {output_path}")
 
+    # state is only written when a path is given, so experimental builds
+    # cannot silently overwrite the canonical train-time state
+    if state_path is not None:
+        Path(state_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(state_path, "w") as f:
+            json.dump(builder.export_state(), f, indent=2)
+        print(f"Saved feature state to {state_path}")
+
     return df_features
 
 
 if __name__ == "__main__":
-    build_features(train_end_date="2024-01-01")
+    build_features(
+        train_end_date="2024-01-01",
+        state_path=MODELS_DIR / "feature_state.json",
+    )

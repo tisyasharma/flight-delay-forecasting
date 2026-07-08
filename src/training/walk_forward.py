@@ -12,6 +12,7 @@ from src.config import (
     DATA_START, SEQUENCE_LENGTH, WALK_FORWARD_FOLDS,
     TABULAR_FEATURES, SEQUENCE_MODEL_FEATURES,
 )
+from src import tracking
 from src.evaluation.metrics import (
     calculate_delay_metrics,
     calculate_quantile_metrics,
@@ -504,6 +505,28 @@ def main():
         json.dump(output, f, indent=2)
 
     print(f"\nSaved to {output_path}")
+
+    # tracking runs last so a store failure can never cost the results file,
+    # one parent run per model with a nested run per fold, no-op without mlflow
+    for model_name, fold_metrics in results.items():
+        with tracking.start_run(
+            run_name=f"walk_forward_{model_name}", tags={"phase": "walk_forward"}
+        ):
+            features = models[model_name]["features"]
+            tracking.log_params({
+                "model": model_name,
+                "n_folds": len(WALK_FORWARD_FOLDS),
+                "n_features": len(features) if features else 0,
+            })
+            for fold_idx, metrics in enumerate(fold_metrics):
+                with tracking.start_run(run_name=f"fold_{fold_idx + 1}", nested=True):
+                    tracking.log_metrics(metrics)
+
+            aggregates = {}
+            for key, agg in summary[model_name].items():
+                aggregates[f"{key}_mean"] = agg["mean"]
+                aggregates[f"{key}_std"] = agg["std"]
+            tracking.log_metrics(aggregates)
 
 
 if __name__ == "__main__":

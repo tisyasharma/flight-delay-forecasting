@@ -6,6 +6,7 @@ import optuna
 import pandas as pd
 import xgboost as xgb
 
+from src import tracking
 from src.config import TRAIN_END, VAL_END, TABULAR_FEATURES
 from src.evaluation.metrics import calculate_delay_metrics
 
@@ -85,6 +86,11 @@ def main():
         json.dump(study.best_params, f, indent=2)
 
     print(f"Saved to {output_path}")
+
+    with tracking.start_run(run_name="tune_xgboost"):
+        tracking.log_params(study.best_params)
+        tracking.log_metrics({"best_val_mae": study.best_value, "n_trials": len(study.trials)})
+        tracking.log_artifact(output_path)
 
 
 if __name__ == "__main__":

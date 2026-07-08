@@ -5,6 +5,7 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
+from src import tracking
 from src.config import TRAIN_END, VAL_END, TEST_START, TABULAR_FEATURES
 from src.evaluation.metrics import calculate_quantile_metrics, sort_quantile_predictions
 from src.training.train.train_lightgbm import load_tuned_params
@@ -98,6 +99,13 @@ def main():
         print(f"Test {key}: {metrics[key]:.3f}")
 
     export_point_model()
+
+    with tracking.start_run(run_name="train_lightgbm_quantile"):
+        tracking.log_params({**base_params, "alphas": str(QUANTILE_ALPHAS)})
+        tracking.log_metrics(metrics)
+        for alpha in QUANTILE_ALPHAS:
+            tracking.log_artifact(MODELS_DIR / f"lightgbm_q{int(round(alpha * 100))}.txt")
+        tracking.log_artifact(MODELS_DIR / "lightgbm_point.txt")
 
 
 if __name__ == "__main__":

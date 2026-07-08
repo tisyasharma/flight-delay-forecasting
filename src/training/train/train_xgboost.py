@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
+from src import tracking
 from src.config import TRAIN_END, VAL_END, TEST_START, TABULAR_FEATURES
 from src.evaluation.metrics import calculate_delay_metrics
 
@@ -99,6 +100,11 @@ def main():
         print(f"  {row['feature']:35s} {row['importance']:.4f}")
 
     importance_df.to_csv(MODELS_DIR / "xgboost_feature_importance.csv", index=False)
+
+    with tracking.start_run(run_name="train_xgboost"):
+        tracking.log_params(xgb_params)
+        tracking.log_metrics(metrics)
+        tracking.log_artifact(MODELS_DIR / "xgboost_delay.pkl")
 
 
 if __name__ == "__main__":

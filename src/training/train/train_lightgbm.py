@@ -6,6 +6,7 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
+from src import tracking
 from src.config import TRAIN_END, VAL_END, TEST_START, TABULAR_FEATURES
 from src.evaluation.metrics import calculate_delay_metrics
 
@@ -104,6 +105,11 @@ def main():
         print(f"  {row['feature']:35s} {row['importance']:.0f}")
 
     importance_df.to_csv(MODELS_DIR / "lightgbm_feature_importance.csv", index=False)
+
+    with tracking.start_run(run_name="train_lightgbm"):
+        tracking.log_params(lgb_params)
+        tracking.log_metrics(metrics)
+        tracking.log_artifact(MODELS_DIR / "lightgbm_delay.pkl")
 
 
 if __name__ == "__main__":

@@ -17,6 +17,11 @@ build/
 trained_models/
 /models/
 
+# Experiment tracking
+mlflow.db
+mlruns/
+mlartifacts/
+
 # Environment
 venv/
 env/

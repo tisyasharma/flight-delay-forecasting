@@ -1,4 +1,4 @@
-.PHONY: setup features train train-quantile walk-forward forecast test lint
+.PHONY: setup features train train-quantile walk-forward forecast test lint mlflow-ui
 
 setup:
 	pip install -e ".[dev,dl,track]"
@@ -24,3 +24,6 @@ test:
 
 lint:
 	ruff check src tests
+
+mlflow-ui:
+	mlflow ui --backend-store-uri sqlite:///mlflow.db

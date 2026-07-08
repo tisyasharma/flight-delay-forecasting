@@ -1,3 +1,4 @@
+import argparse
 import json
 import random
 from pathlib import Path
@@ -5,21 +6,13 @@ from pathlib import Path
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
-import torch
 import xgboost as xgb
-from sklearn.preprocessing import StandardScaler
-from torch.utils.data import DataLoader, TensorDataset
 
-from src.models.lstm import RouteDelayLSTM, LSTMTrainer
-from src.models.tcn import RouteDelayTCN, TCNTrainer
-from src.models.device import get_device
 from src.config import (
     DATA_START, SEQUENCE_LENGTH, WALK_FORWARD_FOLDS,
     TABULAR_FEATURES, SEQUENCE_MODEL_FEATURES,
 )
 from src.evaluation.metrics import calculate_delay_metrics
-from src.training.sequence_utils import create_sequences_by_date, evaluate_model
-from src.training.train.train_tcn import build_channel_list
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -121,6 +114,14 @@ def train_eval_lightgbm(df, features, target_col, fold):
 
 def train_eval_lstm(df, features, target_col, fold, device):
     """Trains LSTM on one fold and returns test metrics."""
+    # imported lazily so the module stays usable in torch-free environments
+    import torch
+    from sklearn.preprocessing import StandardScaler
+    from torch.utils.data import DataLoader, TensorDataset
+
+    from src.models.lstm import RouteDelayLSTM, LSTMTrainer
+    from src.training.sequence_utils import create_sequences_by_date, evaluate_model
+
     params = load_params("lstm")
 
     df_clean = df.dropna(subset=features + [target_col])
@@ -190,6 +191,15 @@ def train_eval_lstm(df, features, target_col, fold, device):
 
 def train_eval_tcn(df, features, target_col, fold, device):
     """Trains TCN on one fold and returns test metrics."""
+    # imported lazily so the module stays usable in torch-free environments
+    import torch
+    from sklearn.preprocessing import StandardScaler
+    from torch.utils.data import DataLoader, TensorDataset
+
+    from src.models.tcn import RouteDelayTCN, TCNTrainer
+    from src.training.sequence_utils import create_sequences_by_date, evaluate_model
+    from src.training.train.train_tcn import build_channel_list
+
     params = load_params("tcn")
 
     df_clean = df.dropna(subset=features + [target_col])
@@ -320,14 +330,31 @@ def aggregate_fold_metrics(all_fold_metrics):
     return result
 
 
+def parse_model_selection(models, raw):
+    """Validates a comma-separated --models value against the known model names."""
+    if raw is None:
+        return list(models)
+    selected = [name.strip() for name in raw.split(",") if name.strip()]
+    if not selected:
+        raise SystemExit(f"no models selected, available: {list(models)}")
+    unknown = [name for name in selected if name not in models]
+    if unknown:
+        raise SystemExit(f"unknown models: {unknown}, available: {list(models)}")
+    return selected
+
+
 def main():
-    """Runs walk-forward validation across all folds for all models."""
+    """Runs walk-forward validation across all folds for the selected models."""
+    parser = argparse.ArgumentParser(description="Walk-forward validation")
+    parser.add_argument(
+        "--models",
+        default=None,
+        help="comma-separated subset of models to run (default: all)",
+    )
+    args = parser.parse_args()
+
     random.seed(42)
     np.random.seed(42)
-    torch.manual_seed(42)
-
-    device = get_device()
-    print(f"device: {device}")
 
     df = pd.read_csv(DATA_DIR / "features.csv")
     df["date"] = pd.to_datetime(df["date"])
@@ -337,10 +364,6 @@ def main():
     seq_features = [c for c in SEQUENCE_MODEL_FEATURES if c in df.columns]
     target_col = "avg_arr_delay"
 
-    print(f"{len(df):,} samples")
-    print(f"Tabular features: {len(tabular_features)}, Sequence features: {len(seq_features)}")
-    print(f"{len(WALK_FORWARD_FOLDS)} folds\n")
-
     models = {
         "naive": {"func": eval_naive, "features": None},
         "ma": {"func": eval_moving_average, "features": None},
@@ -349,6 +372,25 @@ def main():
         "lstm": {"func": train_eval_lstm, "features": seq_features},
         "tcn": {"func": train_eval_tcn, "features": seq_features},
     }
+
+    selected = parse_model_selection(models, args.models)
+    models = {name: models[name] for name in selected}
+
+    # torch only enters the process when a sequence model was selected
+    device = None
+    if any(name in models for name in ("lstm", "tcn")):
+        import torch
+
+        from src.models.device import get_device
+
+        torch.manual_seed(42)
+        device = get_device()
+        print(f"device: {device}")
+
+    print(f"{len(df):,} samples")
+    print(f"Tabular features: {len(tabular_features)}, Sequence features: {len(seq_features)}")
+    print(f"Models: {', '.join(models)}")
+    print(f"{len(WALK_FORWARD_FOLDS)} folds\n")
 
     results = {name: [] for name in models}
 
@@ -385,10 +427,17 @@ def main():
     output = {
         "n_folds": len(WALK_FORWARD_FOLDS),
         "folds": WALK_FORWARD_FOLDS,
-        "models": summary,
+        "models": {},
     }
 
+    # a subset run must extend the published results, not clobber them
     output_path = MODELS_DIR / "walk_forward_results.json"
+    if output_path.exists():
+        with open(output_path) as f:
+            output["models"] = json.load(f).get("models", {})
+
+    output["models"].update(summary)
+
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2)
 

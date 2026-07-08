@@ -110,7 +110,7 @@ class TCNTrainer:
 
     def __init__(self, model, learning_rate=0.001, device=None):
         if device is None:
-            from src.config import get_device
+            from src.models.device import get_device
             device = get_device()
         self.device = device
         self.model = model.to(self.device)

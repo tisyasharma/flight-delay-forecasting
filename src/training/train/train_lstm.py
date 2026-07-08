@@ -1,6 +1,5 @@
 import json
 import random
-import sys
 from pathlib import Path
 
 import joblib
@@ -10,9 +9,6 @@ import torch
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
 from src.models.lstm import RouteDelayLSTM, LSTMTrainer
 from src.config import (
     TRAIN_END, VAL_END, TEST_END, DATA_START,
@@ -21,6 +17,7 @@ from src.config import (
 from src.evaluation.metrics import calculate_delay_metrics
 from src.training.sequence_utils import create_sequences_by_date, evaluate_model
 
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODELS_DIR = PROJECT_ROOT / "trained_models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -52,7 +49,7 @@ def main():
     np.random.seed(42)
     torch.manual_seed(42)
 
-    from src.config import get_device
+    from src.models.device import get_device
     device = get_device()
     print(f"device: {device}")
 

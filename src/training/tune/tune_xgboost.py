@@ -1,5 +1,4 @@
 import json
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -7,11 +6,10 @@ import optuna
 import pandas as pd
 import xgboost as xgb
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
 from src.config import TRAIN_END, VAL_END, TABULAR_FEATURES
 from src.evaluation.metrics import calculate_delay_metrics
+
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODELS_DIR = PROJECT_ROOT / "trained_models"

@@ -1,9 +1,7 @@
 import json
 import random
-import sys
 from pathlib import Path
 
-import joblib
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
@@ -12,18 +10,18 @@ import xgboost as xgb
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
 from src.models.lstm import RouteDelayLSTM, LSTMTrainer
 from src.models.tcn import RouteDelayTCN, TCNTrainer
+from src.models.device import get_device
 from src.config import (
     DATA_START, SEQUENCE_LENGTH, WALK_FORWARD_FOLDS,
-    TABULAR_FEATURES, SEQUENCE_MODEL_FEATURES, get_device,
+    TABULAR_FEATURES, SEQUENCE_MODEL_FEATURES,
 )
 from src.evaluation.metrics import calculate_delay_metrics
 from src.training.sequence_utils import create_sequences_by_date, evaluate_model
 from src.training.train.train_tcn import build_channel_list
+
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODELS_DIR = PROJECT_ROOT / "trained_models"
@@ -265,7 +263,7 @@ def train_eval_tcn(df, features, target_col, fold, device):
 
 def eval_naive(df, target_col, fold):
     """Evaluates naive baseline (yesterday's delay) on one fold."""
-    from src.models.baselines import NaiveBaseline
+    from src.models.simple_baselines import NaiveBaseline
 
     train_df = df[df["date"] < fold["train_end"]]
     test_df = df[(df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])]
@@ -286,7 +284,7 @@ def eval_naive(df, target_col, fold):
 
 def eval_moving_average(df, target_col, fold):
     """Evaluates 7-day moving average baseline on one fold."""
-    from src.models.baselines import MovingAverageBaseline
+    from src.models.simple_baselines import MovingAverageBaseline
 
     train_df = df[df["date"] < fold["train_end"]]
     test_df = df[(df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])]

@@ -1,5 +1,4 @@
 import json
-import sys
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,19 +8,19 @@ import numpy as np
 import pandas as pd
 import torch
 
+from src.models.lstm import RouteDelayLSTM
+from src.models.tcn import RouteDelayTCN
+from src.models.device import get_device
+from src.evaluation.metrics import calculate_delay_metrics
+from src.config import (
+    TRAIN_END, TEST_START, TEST_END, SEQUENCE_LENGTH,
+    SEQUENCE_MODEL_FEATURES,
+)
+
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.models.lstm import RouteDelayLSTM
-from src.models.tcn import RouteDelayTCN
-from src.evaluation.metrics import calculate_delay_metrics
-from src.config import (
-    TRAIN_END, TEST_START, TEST_END, SEQUENCE_LENGTH,
-    SEQUENCE_MODEL_FEATURES, get_device,
-)
 
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODELS_DIR = PROJECT_ROOT / "trained_models"

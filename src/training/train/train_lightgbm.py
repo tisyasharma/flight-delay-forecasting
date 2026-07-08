@@ -9,7 +9,7 @@ import pandas as pd
 from src.config import TRAIN_END, VAL_END, TEST_START, TABULAR_FEATURES
 from src.evaluation.metrics import calculate_delay_metrics
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODELS_DIR = PROJECT_ROOT / "trained_models"

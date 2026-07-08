@@ -17,7 +17,7 @@ from src.config import (
 )
 from src.training.sequence_utils import create_sequences_by_date, evaluate_model
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODELS_DIR = PROJECT_ROOT / "trained_models"

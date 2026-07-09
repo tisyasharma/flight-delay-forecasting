@@ -19,6 +19,8 @@ ROUTE_STATE_COLS = [
     "route_encoded", "route_mean_demand", "route_std_demand",
     "route_median_demand", "route_delay_mean", "route_delay_std",
     "apt1_temp_avg", "apt2_temp_avg",
+    "apt1_visibility_min", "apt2_visibility_min",
+    "apt1_visibility_p10", "apt2_visibility_p10",
 ]
 
 
@@ -32,8 +34,8 @@ def test_registry_lists_are_subset_of_built_columns(built):
 
 
 def test_feature_list_counts_and_uniqueness():
-    """Pins the 63-feature tabular contract and rejects duplicate names."""
-    assert len(TABULAR_FEATURES) == 63
+    """Pins the 78-feature tabular contract and rejects duplicate names."""
+    assert len(TABULAR_FEATURES) == 78
     for feature_list in (TABULAR_FEATURES, WEATHER_FEATURES, SEQUENCE_MODEL_FEATURES):
         assert len(feature_list) == len(set(feature_list))
 

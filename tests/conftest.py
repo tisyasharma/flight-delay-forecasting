@@ -26,10 +26,11 @@ def _build_synthetic():
     Builds the shared synthetic base with every input column FeatureBuilder
     consumes. The target mixes a per-route level, a weekly sinusoid, and a
     weather-severity term so simple models have real signal to find.
-    Post-train temperatures are shifted +15 and both windows get ~5% NaNs,
-    so an imputation value computed on the full data provably differs from
-    the train-window median. Every route spans every date, a route with
-    fewer than two train rows would export a None std in the feature state.
+    Post-train temperatures are shifted +15 and visibility floors -6000, and
+    both windows get ~5% NaNs, so an imputation value computed on the full
+    data provably differs from the train-window median. Every route spans
+    every date, a route with fewer than two train rows would export a None
+    std in the feature state.
     """
     rng = np.random.default_rng(42)
     dates = pd.date_range("2023-01-01", periods=400, freq="D")
@@ -64,6 +65,13 @@ def _build_synthetic():
         total_precip = apt1_precip + apt2_precip
         hourly_severity = rng.choice(_SEVERITY_LEVELS, size=n, p=_SEVERITY_WEIGHTS)
 
+        apt1_vis_min = rng.uniform(2000.0, 24000.0, size=n)
+        apt2_vis_min = rng.uniform(2000.0, 24000.0, size=n)
+        apt1_gust = apt1_wind * rng.uniform(1.1, 1.8, size=n)
+        apt2_gust = apt2_wind * rng.uniform(1.1, 1.8, size=n)
+        apt1_fzra = rng.choice([0.0, 0.0, 0.0, 0.0, 1.0, 3.0], size=n)
+        apt2_fzra = rng.choice([0.0, 0.0, 0.0, 0.0, 1.0, 3.0], size=n)
+
         frames.append(pd.DataFrame({
             "date": dates,
             "route": route,
@@ -91,6 +99,21 @@ def _build_synthetic():
             "storm_hours": rng.choice([0.0, 0.0, 0.0, 1.0, 2.0, 4.0], size=n),
             "morning_severity": rng.choice([0.0, 0.0, 1.0, 2.0, 3.0], size=n),
             "evening_severity": rng.choice([0.0, 0.0, 1.0, 2.0, 3.0], size=n),
+            "apt1_visibility_min": apt1_vis_min,
+            "apt2_visibility_min": apt2_vis_min,
+            "apt1_visibility_p10": apt1_vis_min * rng.uniform(1.0, 1.4, size=n),
+            "apt2_visibility_p10": apt2_vis_min * rng.uniform(1.0, 1.4, size=n),
+            "apt1_cape_max": rng.gamma(0.8, 400.0, size=n),
+            "apt2_cape_max": rng.gamma(0.8, 400.0, size=n),
+            "apt1_gust_max": apt1_gust,
+            "apt2_gust_max": apt2_gust,
+            "apt1_gust_spread": apt1_gust - apt1_wind,
+            "apt2_gust_spread": apt2_gust - apt2_wind,
+            "apt1_low_cloud_hours": rng.choice(np.arange(0.0, 13.0), size=n),
+            "apt2_low_cloud_hours": rng.choice(np.arange(0.0, 13.0), size=n),
+            "apt1_freezing_rain_hours": apt1_fzra,
+            "apt2_freezing_rain_hours": apt2_fzra,
+            "has_freezing_rain": ((apt1_fzra > 0) | (apt2_fzra > 0)).astype(float),
         }))
 
     df = pd.concat(frames, ignore_index=True)
@@ -98,7 +121,15 @@ def _build_synthetic():
     post_train = df["date"] >= pd.Timestamp(TRAIN_END)
     df.loc[post_train, ["apt1_temp_avg", "apt2_temp_avg"]] += 15.0
 
-    for col in ["apt1_temp_avg", "apt2_temp_avg"]:
+    # a post-train visibility regime shift makes a full-data median leak
+    # detectable, same trick as the temperature shift above
+    vis_cols = [
+        "apt1_visibility_min", "apt2_visibility_min",
+        "apt1_visibility_p10", "apt2_visibility_p10",
+    ]
+    df.loc[post_train, vis_cols] = (df.loc[post_train, vis_cols] - 6000.0).clip(lower=200.0)
+
+    for col in ["apt1_temp_avg", "apt2_temp_avg"] + vis_cols:
         for mask in (~post_train, post_train):
             idx = df.index[mask].to_numpy()
             drop = rng.choice(idx, size=int(len(idx) * 0.05), replace=False)
@@ -112,7 +143,8 @@ def _build_synthetic():
         drop = rng.choice(df.index.to_numpy(), size=6, replace=False)
         df.loc[drop, col] = np.nan
 
-    for col in ["total_precip", "max_wind", "storm_hours", "morning_severity"]:
+    for col in ["total_precip", "max_wind", "storm_hours", "morning_severity",
+                "apt1_cape_max", "apt2_gust_max", "apt1_freezing_rain_hours"]:
         drop = rng.choice(df.index.to_numpy(), size=8, replace=False)
         df.loc[drop, col] = np.nan
 

@@ -221,6 +221,51 @@ def merge_weather_data(daily, weather):
     return daily
 
 
+def load_aviation_data():
+    """Loads the GFS-derived aviation weather CSV."""
+    aviation_path = WEATHER_DATA_DIR / "aviation_daily.csv"
+    aviation = pd.read_csv(aviation_path)
+    aviation["date"] = pd.to_datetime(aviation["date"])
+    return aviation
+
+
+def merge_aviation_data(daily, aviation):
+    """Joins aviation weather for both origin and destination airports onto daily."""
+    daily["airport1"] = daily["route"].apply(lambda r: r.split("-")[0])
+    daily["airport2"] = daily["route"].apply(lambda r: r.split("-")[1])
+
+    aviation_cols = [
+        "visibility_min", "visibility_p10", "cape_max", "gust_max",
+        "gust_spread", "low_cloud_hours", "freezing_rain_hours",
+    ]
+
+    aviation_subset = aviation[["date", "airport"] + aviation_cols].copy()
+
+    aviation1 = aviation_subset.rename(
+        columns={col: f"apt1_{col}" for col in aviation_cols}
+    )
+    aviation1 = aviation1.rename(columns={"airport": "airport1"})
+
+    aviation2 = aviation_subset.rename(
+        columns={col: f"apt2_{col}" for col in aviation_cols}
+    )
+    aviation2 = aviation2.rename(columns={"airport": "airport2"})
+
+    daily = daily.merge(aviation1, on=["date", "airport1"], how="left")
+    daily = daily.merge(aviation2, on=["date", "airport2"], how="left")
+
+    daily["has_freezing_rain"] = (
+        (daily["apt1_freezing_rain_hours"] > 0) | (daily["apt2_freezing_rain_hours"] > 0)
+    ).astype(int)
+
+    daily = daily.drop(columns=["airport1", "airport2"])
+
+    match_rate = daily["apt1_visibility_min"].notna().mean() * 100
+    print(f"Aviation weather match rate: {match_rate:.1f}%")
+
+    return daily
+
+
 def save_processed_data(daily):
     """Writes the processed daily dataframe to CSV."""
     output_path = PROCESSED_DATA_DIR / "daily_route_demand.csv"
@@ -239,6 +284,9 @@ def process_all():
 
     weather = load_weather_data()
     daily = merge_weather_data(daily, weather)
+
+    aviation = load_aviation_data()
+    daily = merge_aviation_data(daily, aviation)
 
     save_processed_data(daily)
 

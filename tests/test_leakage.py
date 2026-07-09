@@ -16,14 +16,19 @@ ROUTE_STAT_COLS = [
 ]
 
 
-def _spike_post_train(df, temps=False):
+def _spike_post_train(df, weather=False):
     """Corrupts rows on/after SPIKE_DATE hard enough that any leak is visible."""
     out = df.copy()
     post = out["date"] >= pd.Timestamp(SPIKE_DATE)
     out.loc[post, "avg_arr_delay"] += 500.0
     out.loc[post, "flight_count"] += 400.0
-    if temps:
+    if weather:
         out.loc[post, ["apt1_temp_avg", "apt2_temp_avg"]] += 100.0
+        vis_cols = [
+            "apt1_visibility_min", "apt2_visibility_min",
+            "apt1_visibility_p10", "apt2_visibility_p10",
+        ]
+        out.loc[post, vis_cols] += 50000.0
     return out
 
 
@@ -60,13 +65,14 @@ def test_fill_values_unchanged_by_post_train_spike(synthetic_df, train_end):
     clean_builder = FeatureBuilder(synthetic_df, train_end_date=train_end)
     clean_builder.build()
     spiked_builder = FeatureBuilder(
-        _spike_post_train(synthetic_df, temps=True), train_end_date=train_end
+        _spike_post_train(synthetic_df, weather=True), train_end_date=train_end
     )
     spiked_builder.build()
 
     clean_state = clean_builder.export_state()
     spiked_state = spiked_builder.export_state()
     assert clean_state["temp_fill_values"] == spiked_state["temp_fill_values"]
+    assert clean_state["aviation_fill_values"] == spiked_state["aviation_fill_values"]
     assert clean_state["lag_fill_medians"] == spiked_state["lag_fill_medians"]
 
 
@@ -74,7 +80,7 @@ def test_rows_before_spike_identical(synthetic_df, train_end):
     """Feature rows dated before the corruption must come out identical."""
     clean = FeatureBuilder(synthetic_df, train_end_date=train_end).build()
     spiked = FeatureBuilder(
-        _spike_post_train(synthetic_df, temps=True), train_end_date=train_end
+        _spike_post_train(synthetic_df, weather=True), train_end_date=train_end
     ).build()
 
     cutoff = pd.Timestamp(SPIKE_DATE)
@@ -95,6 +101,23 @@ def test_temp_fill_uses_train_median_only(synthetic_df, train_end, built):
         full_median = synthetic_df[col].median()
         assert state["temp_fill_values"][col] == float(train_median)
         # the fixture shifts post-train temps, so a full-data leak would differ
+        assert train_median != full_median
+
+
+def test_visibility_fill_uses_train_median_only(synthetic_df, train_end, built):
+    """Visibility NaNs must be filled with the train-window median, not the full-data one."""
+    _, builder = built
+    state = builder.export_state()
+
+    train_mask = synthetic_df["date"] < pd.Timestamp(train_end)
+    for col in [
+        "apt1_visibility_min", "apt2_visibility_min",
+        "apt1_visibility_p10", "apt2_visibility_p10",
+    ]:
+        train_median = synthetic_df.loc[train_mask, col].median()
+        full_median = synthetic_df[col].median()
+        assert state["aviation_fill_values"][col] == float(train_median)
+        # the fixture drops post-train visibility, so a full-data leak would differ
         assert train_median != full_median
 
 

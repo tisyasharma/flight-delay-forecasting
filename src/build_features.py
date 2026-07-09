@@ -45,6 +45,7 @@ class FeatureBuilder:
         self._route_codes = None
         self._route_stats = None
         self._temp_fill_values = {}
+        self._aviation_fill_values = {}
         self._lag_fill_medians = {}
 
     def add_temporal_features(self):
@@ -266,6 +267,45 @@ class FeatureBuilder:
 
         return self
 
+    def add_aviation_features(self):
+        """
+        Fills the GFS aviation columns. Visibility gets the train-window median
+        because zero would mean fog, the opposite of missing; convective, gust,
+        cloud, and freezing-rain columns default to a benign zero.
+        """
+        if self.state is None:
+            if self.train_end_date:
+                train_mask = self.df["date"] < self.train_end_date
+            else:
+                train_mask = pd.Series(True, index=self.df.index)
+
+        visibility_cols = [
+            "apt1_visibility_min", "apt2_visibility_min",
+            "apt1_visibility_p10", "apt2_visibility_p10",
+        ]
+        for col in visibility_cols:
+            if self.state is not None:
+                fill_value = self.state["aviation_fill_values"][col]
+            else:
+                train_median = self.df.loc[train_mask, col].median()
+                fill_value = train_median if pd.notna(train_median) else 20000.0
+            self._aviation_fill_values[col] = float(fill_value)
+            self.df[col] = self.df[col].fillna(fill_value)
+
+        zero_cols = [
+            "apt1_cape_max", "apt2_cape_max",
+            "apt1_gust_max", "apt2_gust_max",
+            "apt1_gust_spread", "apt2_gust_spread",
+            "apt1_low_cloud_hours", "apt2_low_cloud_hours",
+            "apt1_freezing_rain_hours", "apt2_freezing_rain_hours",
+            "has_freezing_rain",
+        ]
+        zero_cols = [c for c in zero_cols if c in self.df.columns]
+        for col in zero_cols:
+            self.df[col] = self.df[col].fillna(0)
+
+        return self
+
     def fill_missing_values(self):
         lag_cols = [c for c in self.df.columns if c.startswith(("lag_", "rolling_", "ewm_"))]
 
@@ -311,6 +351,7 @@ class FeatureBuilder:
             "route_codes": self._route_codes,
             "route_stats": self._route_stats,
             "temp_fill_values": self._temp_fill_values,
+            "aviation_fill_values": self._aviation_fill_values,
             "lag_fill_medians": self._lag_fill_medians,
         }
 
@@ -321,6 +362,7 @@ class FeatureBuilder:
         self.add_lag_features()
         self.add_route_features()
         self.add_weather_features()
+        self.add_aviation_features()
         self.fill_missing_values()
 
         return self.df

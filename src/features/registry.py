@@ -45,6 +45,18 @@ FEATURE_GROUPS = {
         "peak_wind_operating", "precip_operating", "max_hourly_severity",
         "storm_hours", "morning_severity", "evening_severity",
     ],
+    # GFS-derived aviation weather; lifted index is fetched but excluded here
+    # because its archived distribution is not stationary across years
+    "aviation_weather": [
+        "apt1_visibility_min", "apt2_visibility_min",
+        "apt1_visibility_p10", "apt2_visibility_p10",
+        "apt1_cape_max", "apt2_cape_max",
+        "apt1_gust_max", "apt2_gust_max",
+        "apt1_gust_spread", "apt2_gust_spread",
+        "apt1_low_cloud_hours", "apt2_low_cloud_hours",
+        "apt1_freezing_rain_hours", "apt2_freezing_rain_hours",
+        "has_freezing_rain",
+    ],
 }
 
 
@@ -67,12 +79,14 @@ TABULAR_FEATURES = (
     + FEATURE_GROUPS["weather_daily"]
     + FEATURE_GROUPS["weather_lags"]
     + FEATURE_GROUPS["weather_hourly"]
+    + FEATURE_GROUPS["aviation_weather"]
 )
 
 WEATHER_FEATURES = (
     FEATURE_GROUPS["weather_daily"]
     + FEATURE_GROUPS["weather_lags"]
     + FEATURE_GROUPS["weather_hourly"]
+    + FEATURE_GROUPS["aviation_weather"]
 )
 
 # target history -- sequence models see [t-28..t-1] and predict t

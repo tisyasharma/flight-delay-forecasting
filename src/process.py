@@ -82,6 +82,24 @@ def identify_top_routes(df, n=20):
     return top_routes
 
 
+def aggregate_inbound_by_destination(df, airports):
+    """
+    Aggregates all-carrier inbound arrivals per destination airport-day,
+    computed before the route filter so it covers every inbound flight, not
+    just the modeled routes. Backtest evidence only; the model feature uses
+    the modeled-routes variant built inside FeatureBuilder.
+    """
+    inbound = df[df["DEST"].isin(airports)]
+    hub = inbound.groupby(["FL_DATE", "DEST"]).agg(
+        inbound_flights=("ARR_DELAY", "count"),
+        inbound_avg_arr_delay=("ARR_DELAY", "mean"),
+    ).reset_index()
+
+    hub = hub.rename(columns={"FL_DATE": "date", "DEST": "airport"})
+    hub = hub.sort_values(["airport", "date"]).reset_index(drop=True)
+    return hub
+
+
 def aggregate_daily(df, top_routes):
     """Groups flights into daily route-level averages."""
     df_filtered = df[df["route"].isin(top_routes)].copy()
@@ -278,6 +296,13 @@ def process_all():
     df = load_raw_data()
     df = clean_data(df)
     top_routes = identify_top_routes(df, n=50)
+
+    route_airports = sorted({a for route in top_routes for a in route.split("-")})
+    hub = aggregate_inbound_by_destination(df, route_airports)
+    hub_path = PROCESSED_DATA_DIR / "hub_inbound_daily.csv"
+    hub.to_csv(hub_path, index=False)
+    print(f"Hub inbound aggregates: {len(hub):,} airport-days")
+
     daily = aggregate_daily(df, top_routes)
     daily = add_route_metadata(daily)
     daily = fill_missing_dates(daily)

@@ -34,8 +34,8 @@ def test_registry_lists_are_subset_of_built_columns(built):
 
 
 def test_feature_list_counts_and_uniqueness():
-    """Pins the 78-feature tabular contract and rejects duplicate names."""
-    assert len(TABULAR_FEATURES) == 78
+    """Pins the 80-feature tabular contract and rejects duplicate names."""
+    assert len(TABULAR_FEATURES) == 80
     for feature_list in (TABULAR_FEATURES, WEATHER_FEATURES, SEQUENCE_MODEL_FEATURES):
         assert len(feature_list) == len(set(feature_list))
 

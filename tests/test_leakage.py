@@ -104,6 +104,56 @@ def test_temp_fill_uses_train_median_only(synthetic_df, train_end, built):
         assert train_median != full_median
 
 
+def test_hub_state_aggregates_only_past_days_across_routes():
+    """Hub features must average sibling routes' delays from strictly prior days."""
+    dates = pd.date_range("2023-01-01", periods=30, freq="D")
+    rng = np.random.default_rng(7)
+    frames = []
+    # two routes share destination HHH, one is unrelated
+    for route, offset in [("AAA-HHH", 5.0), ("BBB-HHH", 20.0), ("CCC-DDD", 40.0)]:
+        frames.append(pd.DataFrame({
+            "date": dates,
+            "route": route,
+            "avg_arr_delay": offset + rng.normal(0.0, 2.0, size=len(dates)),
+        }))
+    df = pd.concat(frames, ignore_index=True)
+
+    builder = FeatureBuilder(df)
+    builder.add_hub_features()
+    out = builder.df
+
+    hub_actual = (
+        df.assign(dest=df["route"].str.split("-").str[1])
+        .groupby(["dest", "date"])["avg_arr_delay"]
+        .mean()
+        .unstack(level=0)
+    )
+
+    row = out[(out["route"] == "AAA-HHH") & (out["date"] == dates[10])].iloc[0]
+    expected_lag1 = hub_actual.loc[dates[9], "HHH"]
+    expected_roll7 = hub_actual.loc[dates[3]:dates[9], "HHH"].mean()
+    assert np.isclose(row["hub_inbound_lag_1"], expected_lag1)
+    assert np.isclose(row["hub_inbound_roll_7"], expected_roll7)
+
+    # the unrelated route must see only its own destination's history
+    other = out[(out["route"] == "CCC-DDD") & (out["date"] == dates[10])].iloc[0]
+    assert np.isclose(other["hub_inbound_lag_1"], hub_actual.loc[dates[9], "DDD"])
+
+    # first day has no past, heads are left for the median fill
+    first = out[(out["route"] == "AAA-HHH") & (out["date"] == dates[0])].iloc[0]
+    assert pd.isna(first["hub_inbound_lag_1"])
+
+
+def test_hub_state_filled_from_train_medians(built):
+    """Hub head-NaNs must take the per-route median-fill path like other lags."""
+    features, builder = built
+    state = builder.export_state()
+
+    for col in ["hub_inbound_lag_1", "hub_inbound_roll_7"]:
+        assert features[col].notna().all()
+        assert set(state["lag_fill_medians"][col]) == set(features["route"].unique())
+
+
 def test_visibility_fill_uses_train_median_only(synthetic_df, train_end, built):
     """Visibility NaNs must be filled with the train-window median, not the full-data one."""
     _, builder = built

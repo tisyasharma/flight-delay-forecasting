@@ -57,6 +57,11 @@ FEATURE_GROUPS = {
         "apt1_freezing_rain_hours", "apt2_freezing_rain_hours",
         "has_freezing_rain",
     ],
+    # network state from the modeled routes only, so serving can roll it
+    # forward recursively alongside the route's own delay lags
+    "hub_state": [
+        "hub_inbound_lag_1", "hub_inbound_roll_7",
+    ],
 }
 
 
@@ -80,6 +85,7 @@ TABULAR_FEATURES = (
     + FEATURE_GROUPS["weather_lags"]
     + FEATURE_GROUPS["weather_hourly"]
     + FEATURE_GROUPS["aviation_weather"]
+    + FEATURE_GROUPS["hub_state"]
 )
 
 WEATHER_FEATURES = (

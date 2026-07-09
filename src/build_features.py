@@ -267,6 +267,39 @@ class FeatureBuilder:
 
         return self
 
+    def add_hub_features(self):
+        """
+        Cross-route network state: the average arrival delay over all modeled
+        routes into each destination airport on prior days, joined back to
+        route-days by destination. Computed from the modeled routes only, so a
+        live pipeline can rebuild it from rolled-forward predictions without
+        any additional data source.
+        """
+        hub_daily = (
+            self.df.assign(dest=self.df["route"].str.split("-").str[1])
+            .groupby(["dest", "date"])["avg_arr_delay"]
+            .mean()
+            .rename("hub_state")
+            .reset_index()
+            .sort_values(["dest", "date"])
+        )
+
+        grouped = hub_daily.groupby("dest")["hub_state"]
+        hub_daily["hub_inbound_lag_1"] = grouped.shift(1)
+        hub_daily["hub_inbound_roll_7"] = grouped.transform(
+            lambda x: x.shift(1).rolling(7, min_periods=1).mean()
+        )
+
+        self.df["_dest"] = self.df["route"].str.split("-").str[1]
+        self.df = self.df.merge(
+            hub_daily[["dest", "date", "hub_inbound_lag_1", "hub_inbound_roll_7"]],
+            left_on=["_dest", "date"],
+            right_on=["dest", "date"],
+            how="left",
+        ).drop(columns=["_dest", "dest"])
+
+        return self
+
     def add_aviation_features(self):
         """
         Fills the GFS aviation columns. Visibility gets the train-window median
@@ -307,7 +340,7 @@ class FeatureBuilder:
         return self
 
     def fill_missing_values(self):
-        lag_cols = [c for c in self.df.columns if c.startswith(("lag_", "rolling_", "ewm_"))]
+        lag_cols = [c for c in self.df.columns if c.startswith(("lag_", "rolling_", "ewm_", "hub_"))]
 
         if self.state is None:
             if self.train_end_date:
@@ -360,6 +393,7 @@ class FeatureBuilder:
         self.add_holiday_features()
         self.add_covid_features()
         self.add_lag_features()
+        self.add_hub_features()
         self.add_route_features()
         self.add_weather_features()
         self.add_aviation_features()

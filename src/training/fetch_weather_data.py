@@ -42,6 +42,10 @@ DATE_END = "2025-06-30"
 
 BASE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
+# pin the reanalysis model: the default best_match series switched underlying
+# sources around Dec 2024, putting a level shift in the wind speed series
+ARCHIVE_MODEL = "era5"
+
 MAX_RETRIES = 5
 BASE_DELAY = 2
 
@@ -64,7 +68,8 @@ def fetch_weather_for_airport(airport_code, lat, lon, start_date, end_date, time
             "wind_gusts_10m_max",
             "weather_code"
         ],
-        "timezone": timezone
+        "timezone": timezone,
+        "models": ARCHIVE_MODEL
     }
 
     for attempt in range(MAX_RETRIES):
@@ -96,6 +101,12 @@ def fetch_weather_for_airport(airport_code, lat, lon, start_date, end_date, time
                 time.sleep(wait_time)
             else:
                 raise e
+        except requests.exceptions.RequestException as e:
+            # timeouts and connection resets deserve the same backoff as a 429,
+            # otherwise one transient failure silently drops the whole airport
+            wait_time = BASE_DELAY * (2 ** attempt)
+            print(f"request failed ({e}), retrying in {wait_time}s...", end=" ")
+            time.sleep(wait_time)
 
     raise RuntimeError(f"Failed to fetch weather for {airport_code} after {MAX_RETRIES} retries")
 
@@ -115,7 +126,8 @@ def fetch_hourly_weather_for_airport(airport_code, lat, lon, start_date, end_dat
             "wind_gusts_10m",
             "weather_code"
         ],
-        "timezone": timezone
+        "timezone": timezone,
+        "models": ARCHIVE_MODEL
     }
 
     for attempt in range(MAX_RETRIES):
@@ -144,6 +156,10 @@ def fetch_hourly_weather_for_airport(airport_code, lat, lon, start_date, end_dat
                 time.sleep(wait_time)
             else:
                 raise e
+        except requests.exceptions.RequestException as e:
+            wait_time = BASE_DELAY * (2 ** attempt)
+            print(f"request failed ({e}), retrying in {wait_time}s...", end=" ")
+            time.sleep(wait_time)
 
     raise RuntimeError(f"Failed to fetch hourly weather for {airport_code} after {MAX_RETRIES} retries")
 

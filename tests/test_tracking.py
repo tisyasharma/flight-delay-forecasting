@@ -15,7 +15,7 @@ def test_start_run_and_helpers_noop_without_mlflow(tmp_path, monkeypatch):
         pytest.skip("mlflow installed, the no-op path is not exercisable here")
 
     monkeypatch.chdir(tmp_path)
-    with tracking.start_run(run_name="anything", tags={"phase": "test"}) as run:
+    with tracking.start_run(run_name="anything", tags={"stage": "test"}) as run:
         assert run is None
         tracking.log_params({"model": "lightgbm_q", "n_folds": 4})
         tracking.log_metrics({"mae": 11.25, "mape": None})

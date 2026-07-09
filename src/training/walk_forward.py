@@ -513,7 +513,7 @@ def main():
     # one parent run per model with a nested run per fold, no-op without mlflow
     for model_name, fold_metrics in results.items():
         with tracking.start_run(
-            run_name=f"walk_forward_{model_name}", tags={"phase": "walk_forward"}
+            run_name=f"walk_forward_{model_name}", tags={"stage": "walk_forward"}
         ):
             features = models[model_name]["features"]
             tracking.log_params({

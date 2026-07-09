@@ -95,7 +95,7 @@ def main():
     print(f"\nTest coverage_80: {metrics['coverage_80']:.1f}% (nominal 80%)")
     print(f"Test interval width: {metrics['interval_width']:.1f} min")
     for alpha in QUANTILE_ALPHAS:
-        key = f"pinball_{int(alpha * 100)}"
+        key = f"pinball_{int(round(alpha * 100))}"
         print(f"Test {key}: {metrics[key]:.3f}")
 
     export_point_model()

@@ -97,6 +97,8 @@ def train_eval_lightgbm(df, features, target_col, fold):
         "num_leaves": params.get("num_leaves", 63),
         "learning_rate": params.get("learning_rate", 0.1),
         "subsample": params.get("subsample", 0.8),
+        # subsample only takes effect when subsample_freq is nonzero
+        "subsample_freq": params.get("subsample_freq", 0),
         "colsample_bytree": params.get("colsample_bytree", 0.8),
         "min_child_samples": params.get("min_child_samples", 20),
         "reg_alpha": params.get("reg_alpha", 1e-6),
@@ -142,6 +144,7 @@ def train_eval_lightgbm_quantile(df, features, target_col, fold):
         "num_leaves": params.get("num_leaves", 63),
         "learning_rate": params.get("learning_rate", 0.1),
         "subsample": params.get("subsample", 0.8),
+        "subsample_freq": params.get("subsample_freq", 0),
         "colsample_bytree": params.get("colsample_bytree", 0.8),
         "min_child_samples": params.get("min_child_samples", 20),
         "reg_alpha": params.get("reg_alpha", 1e-6),

@@ -46,6 +46,9 @@ def objective(trial, X_train, y_train, X_val, y_val):
         "num_leaves": trial.suggest_int("num_leaves", 15, 127),
         "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
         "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+        # 0 disables bagging entirely, which makes subsample inert; letting
+        # the study choose keeps that a measured decision, not an accident
+        "subsample_freq": trial.suggest_int("subsample_freq", 0, 10),
         "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
         "min_child_samples": trial.suggest_int("min_child_samples", 5, 50),
         "reg_alpha": trial.suggest_float("reg_alpha", 1e-8, 10.0, log=True),

@@ -277,19 +277,16 @@ class FeatureBuilder:
                 train_df = self.df
 
         for col in lag_cols:
-            if col.endswith("_std"):
-                self.df[col] = self.df[col].fillna(0)
+            if self.state is not None:
+                train_medians = pd.Series(self.state["lag_fill_medians"][col], dtype=float)
             else:
-                if self.state is not None:
-                    train_medians = pd.Series(self.state["lag_fill_medians"][col], dtype=float)
-                else:
-                    train_medians = train_df.groupby("route")[col].median()
-                self._lag_fill_medians[col] = {
-                    route: (float(val) if pd.notna(val) else None)
-                    for route, val in train_medians.items()
-                }
-                fill_values = self.df["route"].map(train_medians).fillna(0)
-                self.df[col] = self.df[col].fillna(fill_values)
+                train_medians = train_df.groupby("route")[col].median()
+            self._lag_fill_medians[col] = {
+                route: (float(val) if pd.notna(val) else None)
+                for route, val in train_medians.items()
+            }
+            fill_values = self.df["route"].map(train_medians).fillna(0)
+            self.df[col] = self.df[col].fillna(fill_values)
 
         return self
 

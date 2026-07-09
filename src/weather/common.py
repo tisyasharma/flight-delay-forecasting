@@ -6,6 +6,13 @@ No I/O happens here.
 
 import pandas as pd
 
+# WMO codes for freezing drizzle and freezing rain
+FREEZING_RAIN_CODES = {56, 57, 66, 67}
+
+# percent low-cloud cover treated as a broken-or-worse deck (BKN is 5/8 oktas,
+# about 62 percent); used as the ceiling proxy since no gridded ceiling exists
+LOW_CLOUD_THRESHOLD = 60
+
 
 def weather_code_to_condition(code):
     """Maps WMO weather code to a readable condition string."""
@@ -116,6 +123,56 @@ def aggregate_hourly_to_daily(hourly_df):
 
     for col in ["peak_wind_operating", "precip_operating", "max_hourly_severity",
                 "storm_hours", "morning_severity", "evening_severity"]:
+        daily_agg[col] = daily_agg[col].fillna(0)
+
+    return daily_agg
+
+
+def aggregate_aviation_hourly_to_daily(hourly_df):
+    """
+    Computes daily aviation-weather aggregates from hourly GFS data: visibility
+    floor and 10th percentile, convective potential, gusts and gust spread,
+    low-cloud hours (ceiling proxy), and freezing-rain hours. Visibility stays
+    NaN when unobserved because 0 would mean fog, the opposite of missing;
+    zero-filling is left to the feature builder's imputation.
+    """
+    hourly_df["date"] = hourly_df["datetime"].dt.date
+    hourly_df["hour"] = hourly_df["datetime"].dt.hour
+
+    # periods without archive coverage (Alaska and Hawaii before 2022) arrive
+    # as all-None object columns; coerce so aggregation yields NaN, not errors
+    value_cols = ["visibility", "cape", "lifted_index", "cloud_cover_low",
+                  "weather_code", "wind_gusts", "wind_speed", "freezing_level"]
+    for col in value_cols:
+        hourly_df[col] = pd.to_numeric(hourly_df[col], errors="coerce")
+
+    operating = hourly_df[(hourly_df["hour"] >= 6) & (hourly_df["hour"] <= 23)]
+
+    groups = hourly_df.groupby(["airport", "date"])
+    operating_groups = operating.groupby(["airport", "date"])
+
+    daily_agg = pd.DataFrame()
+    daily_agg["visibility_min"] = operating_groups["visibility"].min()
+    daily_agg["visibility_p10"] = operating_groups["visibility"].quantile(0.1)
+    daily_agg["cape_max"] = operating_groups["cape"].max()
+    daily_agg["gust_max"] = operating_groups["wind_gusts"].max()
+    daily_agg["gust_spread"] = daily_agg["gust_max"] - operating_groups["wind_speed"].max()
+    daily_agg["low_cloud_hours"] = operating_groups["cloud_cover_low"].apply(
+        lambda x: (x >= LOW_CLOUD_THRESHOLD).sum()
+    )
+    # freezing rain outside operating hours still ices surfaces for the
+    # morning bank, so this one counts all 24 hours like storm_hours does
+    daily_agg["freezing_rain_hours"] = groups["weather_code"].apply(
+        lambda x: x.isin(FREEZING_RAIN_CODES).sum()
+    )
+    daily_agg["lifted_index_min"] = operating_groups["lifted_index"].min()
+    daily_agg["freezing_level_min"] = groups["freezing_level"].min()
+
+    daily_agg = daily_agg.reset_index()
+    daily_agg["date"] = pd.to_datetime(daily_agg["date"])
+
+    for col in ["cape_max", "gust_max", "gust_spread", "low_cloud_hours",
+                "freezing_rain_hours"]:
         daily_agg[col] = daily_agg[col].fillna(0)
 
     return daily_agg

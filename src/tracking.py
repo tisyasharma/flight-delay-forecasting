@@ -51,8 +51,9 @@ def _git_state():
             ["git", "-C", str(PROJECT_ROOT), "rev-parse", "--short", "HEAD"],
             capture_output=True, text=True, check=True, timeout=10,
         ).stdout.strip()
+        # untracked files cannot affect a build, only tracked changes count
         status = subprocess.run(
-            ["git", "-C", str(PROJECT_ROOT), "status", "--porcelain"],
+            ["git", "-C", str(PROJECT_ROOT), "status", "--porcelain", "--untracked-files=no"],
             capture_output=True, text=True, check=True, timeout=10,
         ).stdout
         return sha, "true" if status.strip() else "false"

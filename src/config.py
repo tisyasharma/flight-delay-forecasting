@@ -17,6 +17,7 @@ __all__ = [
     "DATA_START",
     "HPO_TRAIN_END",
     "HPO_VAL_END",
+    "FINAL_TEST_START",
     "COVID_START",
     "COVID_PEAK_END",
     "COVID_RECOVERY_END",
@@ -35,6 +36,11 @@ DATA_START = "2019-01-01"
 # 2025 H1 is the locked final test, so this is the only clean choice
 HPO_TRAIN_END = "2022-07-01"
 HPO_VAL_END = "2023-01-01"
+
+# locked final holdout, evaluated exactly once at release. train scripts
+# printed metrics over this span before the lock was declared, that partial
+# prior observation is disclosed in the model card
+FINAL_TEST_START = "2025-01-01"
 
 COVID_START = "2020-03-01"
 COVID_PEAK_END = "2021-06-01"

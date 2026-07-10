@@ -1,3 +1,4 @@
+import argparse
 import json
 import random
 from pathlib import Path
@@ -11,7 +12,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from src.models.lstm import RouteDelayLSTM, LSTMTrainer
 from src.config import (
-    TRAIN_END, VAL_END, TEST_END, DATA_START,
+    TRAIN_END, VAL_END, TEST_END, FINAL_TEST_START, DATA_START,
     SEQUENCE_LENGTH, SEQUENCE_MODEL_FEATURES,
 )
 from src.evaluation.metrics import calculate_delay_metrics
@@ -46,6 +47,14 @@ def load_tuned_params():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Train the sequence model")
+    parser.add_argument(
+        "--final-test",
+        action="store_true",
+        help="also evaluate the locked 2025 H1 holdout, release gate use only",
+    )
+    args = parser.parse_args()
+
     random.seed(42)
     np.random.seed(42)
     torch.manual_seed(42)
@@ -66,9 +75,9 @@ def main():
 
     train_mask = df_clean["date"] < TRAIN_END
     val_mask = (df_clean["date"] >= TRAIN_END) & (df_clean["date"] < VAL_END)
-    test_mask = df_clean["date"] >= VAL_END
+    devtest_mask = (df_clean["date"] >= VAL_END) & (df_clean["date"] < FINAL_TEST_START)
 
-    print(f"train={train_mask.sum():,}  val={val_mask.sum():,}  test={test_mask.sum():,}")
+    print(f"train={train_mask.sum():,}  val={val_mask.sum():,}  devtest={devtest_mask.sum():,}")
 
     scaler = StandardScaler()
     scaler.fit(df_clean.loc[train_mask, available_features].values)
@@ -90,11 +99,11 @@ def main():
     )
     test_X, test_y = create_sequences_by_date(
         df_clean, available_features, target_col, scaler,
-        start_date=VAL_END, end_date=TEST_END,
+        start_date=VAL_END, end_date=FINAL_TEST_START,
         sequence_length=SEQUENCE_LENGTH, target_scaler=target_scaler
     )
 
-    print(f"sequences: train={len(train_X):,}  val={len(val_X):,}  test={len(test_X):,}")
+    print(f"sequences: train={len(train_X):,}  val={len(val_X):,}  devtest={len(test_X):,}")
 
     hp = load_tuned_params()
     batch_size = hp.get("batch_size", 64)
@@ -141,10 +150,29 @@ def main():
     actuals, preds = evaluate_model(model, test_loader, device, target_scaler=target_scaler)
     metrics = calculate_delay_metrics(actuals, preds)
 
-    print(f"Test MAE: {metrics['mae']:.2f} min")
-    print(f"Test RMSE: {metrics['rmse']:.2f} min")
-    print(f"R2: {metrics['r2']:.3f}")
-    print(f"Within 15min: {metrics['within_15']:.1f}%")
+    print(f"Devtest MAE: {metrics['mae']:.2f} min")
+    print(f"Devtest RMSE: {metrics['rmse']:.2f} min")
+    print(f"Devtest R2: {metrics['r2']:.3f}")
+    print(f"Devtest within 15min: {metrics['within_15']:.1f}%")
+
+    if args.final_test:
+        final_X, final_y = create_sequences_by_date(
+            df_clean, available_features, target_col, scaler,
+            start_date=FINAL_TEST_START, end_date=TEST_END,
+            sequence_length=SEQUENCE_LENGTH, target_scaler=target_scaler,
+        )
+        final_loader = DataLoader(
+            TensorDataset(torch.tensor(final_X, dtype=torch.float32),
+                          torch.tensor(final_y, dtype=torch.float32)),
+            batch_size=batch_size, shuffle=False,
+        )
+        final_actuals, final_preds = evaluate_model(
+            model, final_loader, device, target_scaler=target_scaler
+        )
+        final_metrics = calculate_delay_metrics(final_actuals, final_preds)
+        print(f"\nLOCKED FINAL TEST ({FINAL_TEST_START} onward, one-shot release gate)")
+        print(f"Final MAE: {final_metrics['mae']:.2f} min  RMSE: {final_metrics['rmse']:.2f} min")
+        print(f"Final within 15min: {final_metrics['within_15']:.1f}%")
 
     torch.save({
         "model_state_dict": model.state_dict(),

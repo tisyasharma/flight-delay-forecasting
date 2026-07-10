@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 
 import joblib
@@ -6,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from src import tracking
-from src.config import TRAIN_END, VAL_END, TEST_START, TABULAR_FEATURES
+from src.config import TRAIN_END, VAL_END, TEST_START, FINAL_TEST_START, TABULAR_FEATURES
 from src.evaluation.metrics import calculate_quantile_metrics, sort_quantile_predictions
 from src.training.train.train_lightgbm import load_tuned_params
 
@@ -39,6 +40,14 @@ def export_point_model():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Train the LightGBM quantile models")
+    parser.add_argument(
+        "--final-test",
+        action="store_true",
+        help="also evaluate the locked 2025 H1 holdout, release gate use only",
+    )
+    args = parser.parse_args()
+
     np.random.seed(42)
 
     df = pd.read_csv(DATA_DIR / "features.csv")
@@ -54,16 +63,21 @@ def main():
     val_df = df[
         (df["date"] >= TRAIN_END) & (df["date"] < VAL_END)
     ].dropna(subset=available_features + [target_col])
-    test_df = df[df["date"] >= TEST_START].dropna(subset=available_features + [target_col])
+    # the dev-test window stops before the locked final holdout, which is
+    # evaluated exactly once at release behind --final-test
+    devtest_df = df[
+        (df["date"] >= TEST_START) & (df["date"] < FINAL_TEST_START)
+    ].dropna(subset=available_features + [target_col])
+    final_df = df[df["date"] >= FINAL_TEST_START].dropna(subset=available_features + [target_col])
 
     X_train = train_df[available_features].values
     y_train = train_df[target_col].values
     X_val = val_df[available_features].values
     y_val = val_df[target_col].values
-    X_test = test_df[available_features].values
-    y_test = test_df[target_col].values
+    X_devtest = devtest_df[available_features].values
+    y_devtest = devtest_df[target_col].values
 
-    print(f"train={len(X_train):,}  val={len(X_val):,}  test={len(X_test):,}")
+    print(f"train={len(X_train):,}  val={len(X_val):,}  devtest={len(X_devtest):,}")
 
     base_params = load_tuned_params()
     base_params.update({
@@ -74,6 +88,7 @@ def main():
     })
 
     quantile_preds = []
+    final_preds = []
     val_curves = {}
     for alpha in QUANTILE_ALPHAS:
         model = lgb.LGBMRegressor(objective="quantile", alpha=alpha, **base_params)
@@ -89,16 +104,30 @@ def main():
         print(f"{name}: best iteration {model.best_iteration_}")
 
         val_curves[name] = model.evals_result_.get("valid_0", {}).get("quantile", [])
-        quantile_preds.append(model.predict(X_test))
+        quantile_preds.append(model.predict(X_devtest))
+        if args.final_test:
+            final_preds.append(model.predict(final_df[available_features].values))
 
     sorted_preds = sort_quantile_predictions(np.column_stack(quantile_preds))
-    metrics = calculate_quantile_metrics(y_test, sorted_preds, alphas=QUANTILE_ALPHAS)
+    devtest_metrics = calculate_quantile_metrics(y_devtest, sorted_preds, alphas=QUANTILE_ALPHAS)
 
-    print(f"\nTest coverage_80: {metrics['coverage_80']:.1f}% (nominal 80%)")
-    print(f"Test interval width: {metrics['interval_width']:.1f} min")
+    print(f"\nDevtest coverage_80: {devtest_metrics['coverage_80']:.1f}% (nominal 80%)")
+    print(f"Devtest interval width: {devtest_metrics['interval_width']:.1f} min")
     for alpha in QUANTILE_ALPHAS:
         key = f"pinball_{int(round(alpha * 100))}"
-        print(f"Test {key}: {metrics[key]:.3f}")
+        print(f"Devtest {key}: {devtest_metrics[key]:.3f}")
+
+    metrics = {f"devtest_{k}": v for k, v in devtest_metrics.items()}
+
+    if args.final_test:
+        final_sorted = sort_quantile_predictions(np.column_stack(final_preds))
+        final_metrics = calculate_quantile_metrics(
+            final_df[target_col].values, final_sorted, alphas=QUANTILE_ALPHAS
+        )
+        print(f"\nLOCKED FINAL TEST ({FINAL_TEST_START} onward, one-shot release gate)")
+        print(f"Final coverage_80: {final_metrics['coverage_80']:.1f}% (nominal 80%)")
+        print(f"Final interval width: {final_metrics['interval_width']:.1f} min")
+        metrics.update({f"finaltest_{k}": v for k, v in final_metrics.items()})
 
     export_point_model()
 

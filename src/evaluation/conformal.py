@@ -40,3 +40,19 @@ def apply_cqr(lower, upper, offset):
     lower = np.asarray(lower, dtype=float)
     upper = np.asarray(upper, dtype=float)
     return lower - offset, upper + offset
+
+
+def split_calibration_window(val_df, date_col="date"):
+    """
+    Splits a validation frame by date into an early-stopping half and a
+    later, dedicated calibration half. Fitting the conformal offset on the
+    same rows that drove early stopping reuses data across model selection
+    and calibration, which quietly weakens the guarantee; the split keeps
+    the calibration set untouched by any selection decision. The later half
+    is used for calibration because it sits closest to the evaluation window.
+    """
+    dates = val_df[date_col]
+    midpoint = dates.min() + (dates.max() - dates.min()) / 2
+    early = val_df[dates < midpoint]
+    late = val_df[dates >= midpoint]
+    return early, late

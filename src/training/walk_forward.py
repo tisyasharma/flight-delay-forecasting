@@ -12,7 +12,7 @@ from src.config import (
     TABULAR_FEATURES, SEQUENCE_MODEL_FEATURES,
 )
 from src import tracking
-from src.evaluation.conformal import apply_cqr, cqr_offset
+from src.evaluation.conformal import apply_cqr, cqr_offset, split_calibration_window
 from src.evaluation.metrics import (
     calculate_classification_metrics,
     calculate_delay_metrics,
@@ -143,6 +143,10 @@ def train_eval_lightgbm_quantile(df, features, target_col, fold):
     if len(test_df) == 0:
         return None
 
+    # the early half of the val window drives early stopping, the later half
+    # is a dedicated calibration set the models never selected against
+    es_df, cal_df = split_calibration_window(val_df)
+
     base_params = {
         "n_estimators": params.get("n_estimators", 500),
         "num_leaves": params.get("num_leaves", 63),
@@ -165,12 +169,12 @@ def train_eval_lightgbm_quantile(df, features, target_col, fold):
         model = lgb.LGBMRegressor(objective="quantile", alpha=alpha, **base_params)
         model.fit(
             train_df[features].values, train_df[target_col].values,
-            eval_set=[(val_df[features].values, val_df[target_col].values)],
+            eval_set=[(es_df[features].values, es_df[target_col].values)],
             eval_metric="quantile",
             callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)],
         )
         test_preds.append(model.predict(test_df[features].values))
-        cal_preds.append(model.predict(val_df[features].values))
+        cal_preds.append(model.predict(cal_df[features].values))
 
     sorted_preds = sort_quantile_predictions(np.column_stack(test_preds))
     y_test = test_df[target_col].values
@@ -178,10 +182,10 @@ def train_eval_lightgbm_quantile(df, features, target_col, fold):
     metrics = calculate_delay_metrics(y_test, sorted_preds[:, len(QUANTILE_ALPHAS) // 2])
     metrics.update(calculate_quantile_metrics(y_test, sorted_preds, alphas=QUANTILE_ALPHAS))
 
-    # split-conformal calibration: the offset is fit on the val window and
-    # applied to the held-out test interval, restoring nominal 80% coverage
+    # split-conformal calibration on the dedicated calibration half, applied
+    # to the held-out test interval to restore nominal 80% coverage
     sorted_cal = sort_quantile_predictions(np.column_stack(cal_preds))
-    offset = cqr_offset(val_df[target_col].values, sorted_cal[:, 0], sorted_cal[:, -1], alpha=0.2)
+    offset = cqr_offset(cal_df[target_col].values, sorted_cal[:, 0], sorted_cal[:, -1], alpha=0.2)
     lo_cal, hi_cal = apply_cqr(sorted_preds[:, 0], sorted_preds[:, -1], offset)
     metrics["coverage_80_cqr"] = float(interval_coverage(y_test, lo_cal, hi_cal))
     metrics["interval_width_cqr"] = float(interval_width(lo_cal, hi_cal))

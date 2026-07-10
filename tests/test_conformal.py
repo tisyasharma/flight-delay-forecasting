@@ -4,8 +4,9 @@ on a held-out set even when the raw quantile interval is miscalibrated.
 """
 
 import numpy as np
+import pandas as pd
 
-from src.evaluation.conformal import apply_cqr, cqr_offset
+from src.evaluation.conformal import apply_cqr, cqr_offset, split_calibration_window
 
 
 def _under_covering_split(seed):
@@ -48,3 +49,23 @@ def test_cqr_offset_masks_nans_and_handles_empty():
     # only the first row is complete, so the call must not raise
     assert np.isfinite(cqr_offset(y, lo, hi))
     assert cqr_offset(np.array([]), np.array([]), np.array([])) == 0.0
+
+
+def test_split_calibration_window_partitions_by_date():
+    """
+    The early-stopping half must strictly precede the calibration half and the
+    two must partition the window, so no row is both selected against and
+    used for the conformal offset.
+    """
+    dates = pd.date_range("2024-01-01", "2024-06-30", freq="D")
+    df = pd.DataFrame({
+        "date": np.repeat(dates, 3),
+        "value": np.arange(len(dates) * 3, dtype=float),
+    })
+
+    early, late = split_calibration_window(df)
+
+    assert len(early) + len(late) == len(df)
+    assert early["date"].max() < late["date"].min()
+    # halves of a six-month window should land within a few days of each other
+    assert abs(len(early) - len(late)) < 6 * 3

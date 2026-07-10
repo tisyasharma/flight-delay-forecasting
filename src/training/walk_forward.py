@@ -24,13 +24,14 @@ QUANTILE_ALPHAS = (0.1, 0.5, 0.9)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
-MODELS_DIR = PROJECT_ROOT / "trained_models"
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
+CONFIGS_DIR = PROJECT_ROOT / "configs"
+OUTPUTS_DIR = PROJECT_ROOT / "outputs"
+OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_params(model_name):
     """Loads tuned params JSON for a model, returns empty dict if missing."""
-    params_path = MODELS_DIR / f"best_params_{model_name}.json"
+    params_path = CONFIGS_DIR / f"best_params_{model_name}.json"
     if params_path.exists():
         with open(params_path) as f:
             return json.load(f)
@@ -497,7 +498,7 @@ def main():
     }
 
     # a subset run must extend the published results, not clobber them
-    output_path = MODELS_DIR / "walk_forward_results.json"
+    output_path = OUTPUTS_DIR / "walk_forward_results.json"
     if output_path.exists():
         with open(output_path) as f:
             output["models"] = json.load(f).get("models", {})
@@ -511,9 +512,10 @@ def main():
 
     # tracking runs last so a store failure can never cost the results file,
     # one parent run per model with a nested run per fold, no-op without mlflow
+    provenance = tracking.provenance_tags(features_df=df, features_path=DATA_DIR / "features.csv")
     for model_name, fold_metrics in results.items():
         with tracking.start_run(
-            run_name=f"walk_forward_{model_name}", tags={"stage": "walk_forward"}
+            run_name=f"walk_forward_{model_name}", tags={"stage": "walk_forward", **provenance}
         ):
             features = models[model_name]["features"]
             tracking.log_params({

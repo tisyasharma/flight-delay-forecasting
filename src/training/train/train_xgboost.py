@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODELS_DIR = PROJECT_ROOT / "trained_models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
+CONFIGS_DIR = PROJECT_ROOT / "configs"
 
 DEFAULT_PARAMS = {
     "n_estimators": 500,
@@ -28,7 +29,7 @@ DEFAULT_PARAMS = {
 
 def load_tuned_params():
     """Loads Optuna best params if available, otherwise returns defaults."""
-    params_path = MODELS_DIR / "best_params_xgboost.json"
+    params_path = CONFIGS_DIR / "best_params_xgboost.json"
     if params_path.exists():
         with open(params_path) as f:
             tuned = json.load(f)
@@ -101,7 +102,8 @@ def main():
 
     importance_df.to_csv(MODELS_DIR / "xgboost_feature_importance.csv", index=False)
 
-    with tracking.start_run(run_name="train_xgboost"):
+    provenance = tracking.provenance_tags(features_df=df, features_path=DATA_DIR / "features.csv")
+    with tracking.start_run(run_name="train_xgboost", tags=provenance):
         tracking.log_params(xgb_params)
         tracking.log_metrics(metrics)
         tracking.log_artifact(MODELS_DIR / "xgboost_delay.pkl")

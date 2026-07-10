@@ -74,6 +74,7 @@ def main():
     })
 
     quantile_preds = []
+    val_curves = {}
     for alpha in QUANTILE_ALPHAS:
         model = lgb.LGBMRegressor(objective="quantile", alpha=alpha, **base_params)
         model.fit(
@@ -87,6 +88,7 @@ def main():
         model.booster_.save_model(str(MODELS_DIR / f"{name}.txt"))
         print(f"{name}: best iteration {model.best_iteration_}")
 
+        val_curves[name] = model.evals_result_.get("valid_0", {}).get("quantile", [])
         quantile_preds.append(model.predict(X_test))
 
     sorted_preds = sort_quantile_predictions(np.column_stack(quantile_preds))
@@ -100,9 +102,13 @@ def main():
 
     export_point_model()
 
-    with tracking.start_run(run_name="train_lightgbm_quantile"):
+    provenance = tracking.provenance_tags(features_df=df, features_path=DATA_DIR / "features.csv")
+    with tracking.start_run(run_name="train_lightgbm_quantile", tags=provenance):
         tracking.log_params({**base_params, "alphas": str(QUANTILE_ALPHAS)})
         tracking.log_metrics(metrics)
+        for name, curve in val_curves.items():
+            for i in range(0, len(curve), 5):
+                tracking.log_metrics({f"val_pinball_curve_{name.split('_')[-1]}": curve[i]}, step=i)
         for alpha in QUANTILE_ALPHAS:
             tracking.log_artifact(MODELS_DIR / f"lightgbm_q{int(round(alpha * 100))}.txt")
         tracking.log_artifact(MODELS_DIR / "lightgbm_point.txt")

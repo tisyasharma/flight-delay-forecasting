@@ -9,6 +9,7 @@ import torch
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
+from src import tracking
 from src.models.tcn import RouteDelayTCN, TCNTrainer
 from src.models.device import get_device
 from src.config import (
@@ -20,8 +21,8 @@ from src.training.sequence_utils import create_sequences_by_date, evaluate_model
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
-MODELS_DIR = PROJECT_ROOT / "trained_models"
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
+CONFIGS_DIR = PROJECT_ROOT / "configs"
+CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_data():
@@ -142,11 +143,17 @@ def main():
     print(f"\nBest val MAE: {study.best_value:.3f}")
     print(f"Best params: {study.best_params}")
 
-    output_path = MODELS_DIR / "best_params_tcn.json"
+    output_path = CONFIGS_DIR / "best_params_tcn.json"
     with open(output_path, "w") as f:
         json.dump(study.best_params, f, indent=2)
 
     print(f"Saved to {output_path}")
+
+    provenance = tracking.provenance_tags(features_path=DATA_DIR / "features.csv")
+    with tracking.start_run(run_name="tune_tcn", tags=provenance):
+        tracking.log_params(study.best_params)
+        tracking.log_metrics({"best_val_mae": study.best_value, "n_trials": len(study.trials)})
+        tracking.log_artifact(output_path)
 
 
 if __name__ == "__main__":

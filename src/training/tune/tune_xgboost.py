@@ -13,8 +13,8 @@ from src.evaluation.metrics import calculate_delay_metrics
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
-MODELS_DIR = PROJECT_ROOT / "trained_models"
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
+CONFIGS_DIR = PROJECT_ROOT / "configs"
+CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_splits():
@@ -81,13 +81,14 @@ def main():
     print(f"\nBest val MAE: {study.best_value:.3f}")
     print(f"Best params: {study.best_params}")
 
-    output_path = MODELS_DIR / "best_params_xgboost.json"
+    output_path = CONFIGS_DIR / "best_params_xgboost.json"
     with open(output_path, "w") as f:
         json.dump(study.best_params, f, indent=2)
 
     print(f"Saved to {output_path}")
 
-    with tracking.start_run(run_name="tune_xgboost"):
+    provenance = tracking.provenance_tags(features_path=DATA_DIR / "features.csv")
+    with tracking.start_run(run_name="tune_xgboost", tags=provenance):
         tracking.log_params(study.best_params)
         tracking.log_metrics({"best_val_mae": study.best_value, "n_trials": len(study.trials)})
         tracking.log_artifact(output_path)

@@ -18,6 +18,7 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
+from src import tracking
 from src.config import WALK_FORWARD_FOLDS
 from src.evaluation.metrics import (
     calculate_delay_metrics,
@@ -29,7 +30,7 @@ from src.features.registry import FEATURE_GROUPS, TABULAR_FEATURES
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "features.csv"
 HUB_INBOUND_PATH = PROJECT_ROOT / "data" / "processed" / "hub_inbound_daily.csv"
-PARAMS_PATH = PROJECT_ROOT / "trained_models" / "best_params_lightgbm.json"
+PARAMS_PATH = PROJECT_ROOT / "configs" / "best_params_lightgbm.json"
 OUTPUT_PATH = PROJECT_ROOT / "outputs" / "ablation.json"
 
 TARGET = "avg_arr_delay"
@@ -187,6 +188,16 @@ def main():
     with open(OUTPUT_PATH, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nSaved to {OUTPUT_PATH}")
+
+    # tracking runs after the results file is safe on disk, no-op without mlflow
+    provenance = tracking.provenance_tags(features_df=df, features_path=DATA_PATH)
+    with tracking.start_run(run_name="ablation", tags={"stage": "ablation", **provenance}):
+        tracking.log_params({"n_folds": len(WALK_FORWARD_FOLDS), "sets": ",".join(feature_sets)})
+        for name, entry in results["sets"].items():
+            with tracking.start_run(run_name=f"set_{name}", nested=True):
+                tracking.log_params({"n_features": entry["n_features"]})
+                tracking.log_metrics(entry["mean"])
+        tracking.log_artifact(OUTPUT_PATH)
 
     header = ["set", "features", "mae", "severe_mae", "rmse", "severe_rmse",
               "coverage_80", "severe_coverage_80", "interval_width"]

@@ -50,3 +50,35 @@ def test_nested_run_noop_without_mlflow():
     with tracking.start_run(run_name="parent"):
         with tracking.start_run(run_name="child", nested=True) as child:
             assert child is None
+
+
+def test_missing_mlflow_warns_once_on_stderr(monkeypatch, capsys):
+    """The disabled-tracking warning must be visible but fire only once."""
+    monkeypatch.setattr(tracking, "mlflow", None)
+    monkeypatch.setattr(tracking, "_warned", False)
+
+    with tracking.start_run(run_name="first"):
+        pass
+    with tracking.start_run(run_name="second"):
+        pass
+
+    err = capsys.readouterr().err
+    assert err.count("mlflow is not installed") == 1
+
+
+def test_provenance_tags_fingerprint_code_data_and_env(tmp_path):
+    """Tags must carry the git state, data fingerprint, and library versions."""
+    pd = pytest.importorskip("pandas")
+
+    data_file = tmp_path / "features.csv"
+    data_file.write_text("date,route\n2024-01-01,A_B\n")
+    df = pd.DataFrame({"date": pd.to_datetime(["2024-01-01", "2024-03-31"]), "route": ["A_B", "A_B"]})
+
+    tags = tracking.provenance_tags(features_df=df, features_path=data_file)
+
+    assert "git_sha" in tags and "git_dirty" in tags
+    assert tags["features_rows"] == "2"
+    assert tags["features_start"] == "2024-01-01"
+    assert tags["features_end"] == "2024-03-31"
+    assert len(tags["features_hash"]) == 16
+    assert "version_pandas" in tags and "version_numpy" in tags

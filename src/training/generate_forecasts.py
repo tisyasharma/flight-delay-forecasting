@@ -363,7 +363,7 @@ def main():
     }
 
     # load walk-forward results if available
-    wf_path = MODELS_DIR / "walk_forward_results.json"
+    wf_path = PROJECT_ROOT / "outputs" / "walk_forward_results.json"
     walk_forward_data = None
     if wf_path.exists():
         with open(wf_path) as f:

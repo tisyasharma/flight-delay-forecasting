@@ -9,7 +9,6 @@ from src.config import COVID_START, COVID_PEAK_END, COVID_RECOVERY_END
 
 PROJECT_ROOT = Path(__file__).parent.parent
 PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
-MODELS_DIR = PROJECT_ROOT / "trained_models"
 
 HOLIDAY_YEARS_START = 2019
 
@@ -435,5 +434,5 @@ def build_features(input_path=None, output_path=None, train_end_date="2024-01-01
 if __name__ == "__main__":
     build_features(
         train_end_date="2024-01-01",
-        state_path=MODELS_DIR / "feature_state.json",
+        state_path=PROCESSED_DATA_DIR / "feature_state.json",
     )

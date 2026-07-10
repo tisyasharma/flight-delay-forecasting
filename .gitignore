@@ -33,8 +33,10 @@ env/
 # OS
 .DS_Store
 
-# Generated outputs
-outputs/
+# Generated outputs, evaluation evidence stays tracked
+outputs/*
+!outputs/ablation.json
+!outputs/walk_forward_results.json
 
 # Frontend
 frontend/node_modules/

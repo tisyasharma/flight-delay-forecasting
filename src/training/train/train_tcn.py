@@ -21,6 +21,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODELS_DIR = PROJECT_ROOT / "trained_models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
+CONFIGS_DIR = PROJECT_ROOT / "configs"
 
 DEFAULT_PARAMS = {
     "depth": 3,
@@ -35,7 +36,7 @@ DEFAULT_PARAMS = {
 
 def load_tuned_params():
     """Loads Optuna best params if available, otherwise returns defaults."""
-    params_path = MODELS_DIR / "best_params_tcn.json"
+    params_path = CONFIGS_DIR / "best_params_tcn.json"
     if params_path.exists():
         with open(params_path) as f:
             tuned = json.load(f)

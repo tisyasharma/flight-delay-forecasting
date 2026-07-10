@@ -34,7 +34,7 @@
 
 - Validation protocol: 4 half-year walk-forward folds (2023-01..2024-12), feature statistics rebuilt at each fold's own train_end (`src/training/fold_features.py`); baselines run in the same harness
 - Final test protocol: 2025-01-01..2025-06-30 is a locked holdout, evaluated exactly once at release via the trainers' `--final-test` flag. Disclosure: before the lock was declared (2026-07-10), earlier training runs printed metrics over this span, so it is not perfectly blind; the live pipeline is the fully blind ongoing test after release
-- Primary metrics (walk-forward means, minutes):
+- Primary metrics: the decision metric (bad-delay-day PR-AUC) and calibrated interval coverage below are the headline; MAE is secondary given the predictability ceiling. Point accuracy (walk-forward means, minutes):
 
 | Model | MAE | Hit rate (within 15 min) |
 |---|---|---|
@@ -46,7 +46,8 @@
 | Naive (baseline) | 15.09 | 67.7% |
 
 - Subgroup metrics: severe-weather days (worst-airport severity >= 3, 32% of test rows) run MAE 15.48 vs 11.05 overall for the full feature set; per-route 80% coverage ranges from ~67% (LIH-HNL, LAS-LAX) up to roughly nominal (best route ORD-LGA at 80.5%), i.e. the whole spread sits at or below the 80% target — both slices published in `outputs/ablation.json`
-- Calibration / uncertainty checks: 80% interval covers 74.97% at 29.2-minute mean width (climatology baseline: 76.5% only at 39.3 minutes; the model beats it on all pinball losses 1.89/5.40/3.54 vs 2.13/6.54/4.64). Per-quantile calibration: actuals fall at or below q10 12.1% (nominal 10) and below q90 87.1% (nominal 90) — symmetric ~2-3pp tail shrinkage. Interval widening is calibrated in the recursive-forecasting phase before the [75, 85] coverage release gate applies
+- Decision metric: a P(mean delay > 15 min) classifier (`eval_lightgbm_classifier` in `src/training/walk_forward.py`) flags bad-delay days (22.6% base rate) with PR-AUC 0.61 (~2.7x base rate), ROC-AUC 0.82, Brier 0.13 — the metric that maps to an asymmetric-cost decision, reported alongside MAE
+- Calibration / uncertainty checks: raw 80% quantile interval covers 74.97% at 29.2-minute mean width; conformalized quantile regression (`src/evaluation/conformal.py`, split-conformal offset fit on the val window) restores it to 79.68% (per fold 78.7-80.5) at 31.6-minute width — a distribution-free finite-sample guarantee (marginal, approximate on temporal data). Per-quantile calibration: actuals fall at or below q10 12.1% (nominal 10) and below q90 87.1% (nominal 90). Reliability shown in `images/calibration.png`
 - Robustness / adversarial checks: month-matched PSI drift gates on the training data (`src/data_checks.py`, `src/monitoring/psi.py`); upstream-source pinning (`era5`, `gfs_seamless`); leakage tests with post-cutoff spike injection (`tests/test_leakage.py`)
 
 ## Limitations and risks

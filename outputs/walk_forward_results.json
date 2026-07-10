@@ -490,6 +490,26 @@
           27.64
         ]
       },
+      "coverage_80_cqr": {
+        "mean": 79.68,
+        "std": 0.81,
+        "folds": [
+          79.11,
+          80.42,
+          78.66,
+          80.51
+        ]
+      },
+      "interval_width_cqr": {
+        "mean": 31.64,
+        "std": 1.2,
+        "folds": [
+          32.9,
+          30.39,
+          32.78,
+          30.5
+        ]
+      },
       "pinball_10": {
         "mean": 1.89,
         "std": 0.11,
@@ -575,7 +595,7 @@
       "feature_state": "rebuilt per fold at each fold's train_end",
       "hpo_window": "2022-07-01 to 2023-01-01",
       "params": "configs/best_params_*.json",
-      "git_sha": "7ff910a"
+      "git_sha": "c3c51ed"
     },
     "xgboost": {
       "feature_state": "rebuilt per fold at each fold's train_end",
@@ -593,7 +613,7 @@
       "feature_state": "rebuilt per fold at each fold's train_end",
       "hpo_window": "2022-07-01 to 2023-01-01",
       "params": "configs/best_params_*.json",
-      "git_sha": "7ff910a"
+      "git_sha": "c3c51ed"
     }
   }
 }

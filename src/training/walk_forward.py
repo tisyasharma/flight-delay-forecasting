@@ -12,9 +12,12 @@ from src.config import (
     TABULAR_FEATURES, SEQUENCE_MODEL_FEATURES,
 )
 from src import tracking
+from src.evaluation.conformal import apply_cqr, cqr_offset
 from src.evaluation.metrics import (
     calculate_delay_metrics,
     calculate_quantile_metrics,
+    interval_coverage,
+    interval_width,
     sort_quantile_predictions,
 )
 from src.training.fold_features import RAW_PATH, build_fold_features, load_raw
@@ -155,7 +158,8 @@ def train_eval_lightgbm_quantile(df, features, target_col, fold):
         "verbose": -1,
     }
 
-    quantile_preds = []
+    test_preds = []
+    cal_preds = []
     for alpha in QUANTILE_ALPHAS:
         model = lgb.LGBMRegressor(objective="quantile", alpha=alpha, **base_params)
         model.fit(
@@ -164,13 +168,23 @@ def train_eval_lightgbm_quantile(df, features, target_col, fold):
             eval_metric="quantile",
             callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)],
         )
-        quantile_preds.append(model.predict(test_df[features].values))
+        test_preds.append(model.predict(test_df[features].values))
+        cal_preds.append(model.predict(val_df[features].values))
 
-    sorted_preds = sort_quantile_predictions(np.column_stack(quantile_preds))
+    sorted_preds = sort_quantile_predictions(np.column_stack(test_preds))
     y_test = test_df[target_col].values
 
     metrics = calculate_delay_metrics(y_test, sorted_preds[:, len(QUANTILE_ALPHAS) // 2])
     metrics.update(calculate_quantile_metrics(y_test, sorted_preds, alphas=QUANTILE_ALPHAS))
+
+    # split-conformal calibration: the offset is fit on the val window and
+    # applied to the held-out test interval, restoring nominal 80% coverage
+    sorted_cal = sort_quantile_predictions(np.column_stack(cal_preds))
+    offset = cqr_offset(val_df[target_col].values, sorted_cal[:, 0], sorted_cal[:, -1], alpha=0.2)
+    lo_cal, hi_cal = apply_cqr(sorted_preds[:, 0], sorted_preds[:, -1], offset)
+    metrics["coverage_80_cqr"] = float(interval_coverage(y_test, lo_cal, hi_cal))
+    metrics["interval_width_cqr"] = float(interval_width(lo_cal, hi_cal))
+    metrics["cqr_offset"] = float(offset)
     return metrics
 
 
@@ -432,7 +446,8 @@ def aggregate_fold_metrics(all_fold_metrics):
     """Computes mean and std for each metric across folds."""
     metric_keys = [
         "mae", "rmse", "r2", "within_15", "median_ae",
-        "coverage_80", "interval_width", "pinball_10", "pinball_50", "pinball_90",
+        "coverage_80", "interval_width", "coverage_80_cqr", "interval_width_cqr",
+        "pinball_10", "pinball_50", "pinball_90",
         "below_q10", "below_q50", "below_q90",
     ]
     result = {}

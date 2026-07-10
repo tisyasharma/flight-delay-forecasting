@@ -20,9 +20,12 @@ import pandas as pd
 
 from src import tracking
 from src.config import WALK_FORWARD_FOLDS
+from src.evaluation.conformal import apply_cqr, cqr_offset, split_calibration_window
 from src.evaluation.metrics import (
     calculate_delay_metrics,
     calculate_quantile_metrics,
+    interval_coverage,
+    interval_width,
     sort_quantile_predictions,
 )
 from src.features.registry import FEATURE_GROUPS, TABULAR_FEATURES
@@ -102,17 +105,27 @@ def evaluate_fold(df, features, params, fold, per_route=False):
     )
     point_preds = point.predict(test_df[features].values)
 
+    # quantile models early-stop on the first half of the val window only,
+    # the later half is the dedicated conformal calibration set
+    es_df, cal_df = split_calibration_window(val_df)
+
     quantile_preds = []
+    cal_preds = []
     for alpha in QUANTILE_ALPHAS:
         model = lgb.LGBMRegressor(objective="quantile", alpha=alpha, **params)
         model.fit(
             train_df[features].values, train_df[TARGET].values,
-            eval_set=[(val_df[features].values, val_df[TARGET].values)],
+            eval_set=[(es_df[features].values, es_df[TARGET].values)],
             eval_metric="quantile",
             callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)],
         )
         quantile_preds.append(model.predict(test_df[features].values))
+        cal_preds.append(model.predict(cal_df[features].values))
     sorted_preds = sort_quantile_predictions(np.column_stack(quantile_preds))
+
+    sorted_cal = sort_quantile_predictions(np.column_stack(cal_preds))
+    offset = cqr_offset(cal_df[TARGET].values, sorted_cal[:, 0], sorted_cal[:, -1], alpha=0.2)
+    lo_cqr, hi_cqr = apply_cqr(sorted_preds[:, 0], sorted_preds[:, -1], offset)
 
     y = test_df[TARGET].values
     severe = (test_df["weather_severity_max"] >= SEVERE_THRESHOLD).values
@@ -133,13 +146,27 @@ def evaluate_fold(df, features, params, fold, per_route=False):
         "coverage_80": quantile["coverage_80"],
         "interval_width": quantile["interval_width"],
         "severe_coverage_80": severe_quantile["coverage_80"],
+        # conditional coverage after conformal: marginal calibration can hide
+        # subgroup under-coverage, so the calibrated interval is scored on the
+        # severe-day slice as well
+        "coverage_80_cqr": float(interval_coverage(y, lo_cqr, hi_cqr)),
+        "interval_width_cqr": float(interval_width(lo_cqr, hi_cqr)),
+        "severe_coverage_80_cqr": float(
+            interval_coverage(y[severe], lo_cqr[severe], hi_cqr[severe])
+        ),
+        "cqr_offset": float(offset),
     }
 
     if per_route:
         routes = test_df["route"].values
         in_interval = (y >= sorted_preds[:, 0]) & (y <= sorted_preds[:, -1])
+        in_interval_cqr = (y >= lo_cqr) & (y <= hi_cqr)
         result["per_route_coverage_80"] = {
             route: round(float(in_interval[routes == route].mean() * 100), 2)
+            for route in np.unique(routes)
+        }
+        result["per_route_coverage_80_cqr"] = {
+            route: round(float(in_interval_cqr[routes == route].mean() * 100), 2)
             for route in np.unique(routes)
         }
 
@@ -198,29 +225,34 @@ def main():
 
     for name, features in feature_sets.items():
         fold_metrics = set_fold_metrics[name]
-        per_route_folds = [m.pop("per_route_coverage_80", None) for m in fold_metrics]
+        per_route_keys = ["per_route_coverage_80", "per_route_coverage_80_cqr"]
+        per_route_folds = {
+            key: [m.pop(key, None) for m in fold_metrics] for key in per_route_keys
+        }
         entry = {
             "n_features": len(features),
             "folds": fold_metrics,
             "mean": summarize(fold_metrics),
         }
 
-        per_route_folds = [d for d in per_route_folds if d]
-        if per_route_folds:
-            routes = sorted(set().union(*per_route_folds))
+        for key, folds in per_route_folds.items():
+            folds = [d for d in folds if d]
+            if not folds:
+                continue
+            routes = sorted(set().union(*folds))
             per_route = {}
             for route in routes:
-                values = [d[route] for d in per_route_folds if route in d]
+                values = [d[route] for d in folds if route in d]
                 per_route[route] = {
                     "mean": round(float(np.mean(values)), 2),
                     "min": round(float(np.min(values)), 2),
                     "max": round(float(np.max(values)), 2),
                     "n_folds": len(values),
                 }
-            entry["per_route_coverage_80"] = per_route
+            entry[key] = per_route
 
             worst = sorted(per_route.items(), key=lambda kv: kv[1]["mean"])[:5]
-            print(f"\nworst-covered routes ({name} set, mean coverage_80 across folds):")
+            print(f"\nworst-covered routes ({name} set, mean {key} across folds):")
             for route, stats in worst:
                 print(f"  {route}: {stats['mean']:.1f} (min {stats['min']:.1f})")
 

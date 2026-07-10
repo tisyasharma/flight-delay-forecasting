@@ -14,9 +14,13 @@
           "severe_mae": 16.30241130523599,
           "severe_rmse": 25.301620856485133,
           "severe_n": 3354,
-          "coverage_80": 76.57777777777778,
-          "interval_width": 31.219685919745775,
-          "severe_coverage_80": 76.47584973166369
+          "coverage_80": 75.91111111111111,
+          "interval_width": 30.594252866364453,
+          "severe_coverage_80": 76.17769827072152,
+          "coverage_80_cqr": 80.81111111111112,
+          "interval_width_cqr": 33.83633347724549,
+          "severe_coverage_80_cqr": 79.90459153249851,
+          "cqr_offset": 1.621040305440518
         },
         {
           "mae": 10.523919733219483,
@@ -24,9 +28,13 @@
           "severe_mae": 15.377849647406633,
           "severe_rmse": 22.48791964008713,
           "severe_n": 2778,
-          "coverage_80": 75.63934426229508,
-          "interval_width": 28.677182249401213,
-          "severe_coverage_80": 75.377969762419
+          "coverage_80": 75.51912568306011,
+          "interval_width": 28.5153572505994,
+          "severe_coverage_80": 75.52195824334053,
+          "coverage_80_cqr": 79.66120218579235,
+          "interval_width_cqr": 30.566781183938957,
+          "severe_coverage_80_cqr": 78.25773938084953,
+          "cqr_offset": 1.0257119666697783
         },
         {
           "mae": 12.019978415481152,
@@ -34,9 +42,13 @@
           "severe_mae": 16.661510667637355,
           "severe_rmse": 26.466663042372012,
           "severe_n": 3140,
-          "coverage_80": 74.59668508287292,
-          "interval_width": 30.731018472459997,
-          "severe_coverage_80": 76.40127388535032
+          "coverage_80": 74.97237569060773,
+          "interval_width": 31.141717565268348,
+          "severe_coverage_80": 76.59235668789809,
+          "coverage_80_cqr": 77.50276243093923,
+          "interval_width_cqr": 32.549986953901204,
+          "severe_coverage_80_cqr": 78.37579617834395,
+          "cqr_offset": 0.7041346943164264
         },
         {
           "mae": 10.46936447779969,
@@ -44,9 +56,13 @@
           "severe_mae": 14.912546022071961,
           "severe_rmse": 22.236821801524215,
           "severe_n": 2508,
-          "coverage_80": 74.20765027322405,
-          "interval_width": 27.750981979998542,
-          "severe_coverage_80": 75.15948963317385
+          "coverage_80": 74.15300546448087,
+          "interval_width": 27.722497074023384,
+          "severe_coverage_80": 75.15948963317385,
+          "coverage_80_cqr": 80.5464480874317,
+          "interval_width_cqr": 30.699467268861994,
+          "severe_coverage_80_cqr": 79.98405103668262,
+          "cqr_offset": 1.4884850974193062
         }
       ],
       "mean": {
@@ -55,9 +71,13 @@
         "severe_mae": 15.81,
         "severe_rmse": 24.12,
         "severe_n": 2945.0,
-        "coverage_80": 75.26,
-        "interval_width": 29.59,
-        "severe_coverage_80": 75.85
+        "coverage_80": 75.14,
+        "interval_width": 29.49,
+        "severe_coverage_80": 75.86,
+        "coverage_80_cqr": 79.63,
+        "interval_width_cqr": 31.91,
+        "severe_coverage_80_cqr": 79.13,
+        "cqr_offset": 1.21
       }
     },
     "v1_plus_aviation": {
@@ -69,9 +89,13 @@
           "severe_mae": 16.324896468057744,
           "severe_rmse": 24.477308609246247,
           "severe_n": 3354,
-          "coverage_80": 76.23333333333333,
-          "interval_width": 30.849766098264638,
-          "severe_coverage_80": 76.74418604651163
+          "coverage_80": 76.04444444444445,
+          "interval_width": 30.674643089711964,
+          "severe_coverage_80": 76.71437090041742,
+          "coverage_80_cqr": 81.06666666666666,
+          "interval_width_cqr": 34.151867655892794,
+          "severe_coverage_80_cqr": 80.32200357781754,
+          "cqr_offset": 1.7386122830904114
         },
         {
           "mae": 10.338669600112494,
@@ -79,9 +103,13 @@
           "severe_mae": 15.02201960813756,
           "severe_rmse": 21.76765475678865,
           "severe_n": 2778,
-          "coverage_80": 75.16939890710383,
-          "interval_width": 28.059731143981544,
-          "severe_coverage_80": 75.95392368610511
+          "coverage_80": 74.98360655737704,
+          "interval_width": 27.87615831455124,
+          "severe_coverage_80": 75.84593232541397,
+          "coverage_80_cqr": 79.95628415300547,
+          "interval_width_cqr": 30.407780753275546,
+          "severe_coverage_80_cqr": 79.22966162706983,
+          "cqr_offset": 1.265811219362151
         },
         {
           "mae": 11.777687786394207,
@@ -89,9 +117,13 @@
           "severe_mae": 16.235125682405588,
           "severe_rmse": 25.755463046408536,
           "severe_n": 3140,
-          "coverage_80": 74.23204419889503,
-          "interval_width": 30.458817479313513,
-          "severe_coverage_80": 76.24203821656052
+          "coverage_80": 74.1878453038674,
+          "interval_width": 30.46161863681693,
+          "severe_coverage_80": 76.14649681528662,
+          "coverage_80_cqr": 77.40331491712708,
+          "interval_width_cqr": 32.06058391001966,
+          "severe_coverage_80_cqr": 78.72611464968153,
+          "cqr_offset": 0.799482636601363
         },
         {
           "mae": 10.32511681540984,
@@ -99,9 +131,13 @@
           "severe_mae": 14.690413169731382,
           "severe_rmse": 22.020021267153187,
           "severe_n": 2508,
-          "coverage_80": 74.14207650273225,
-          "interval_width": 27.613687269840444,
-          "severe_coverage_80": 75.47846889952153
+          "coverage_80": 74.39344262295083,
+          "interval_width": 27.806098429648735,
+          "severe_coverage_80": 75.55821371610845,
+          "coverage_80_cqr": 80.44808743169399,
+          "interval_width_cqr": 30.683765678940794,
+          "severe_coverage_80_cqr": 80.3030303030303,
+          "cqr_offset": 1.4388336246460298
         }
       ],
       "mean": {
@@ -110,9 +146,13 @@
         "severe_mae": 15.57,
         "severe_rmse": 23.51,
         "severe_n": 2945.0,
-        "coverage_80": 74.94,
-        "interval_width": 29.25,
-        "severe_coverage_80": 76.1
+        "coverage_80": 74.9,
+        "interval_width": 29.2,
+        "severe_coverage_80": 76.07,
+        "coverage_80_cqr": 79.72,
+        "interval_width_cqr": 31.83,
+        "severe_coverage_80_cqr": 79.65,
+        "cqr_offset": 1.31
       }
     },
     "full": {
@@ -124,9 +164,13 @@
           "severe_mae": 16.17065418449656,
           "severe_rmse": 24.41027312759207,
           "severe_n": 3354,
-          "coverage_80": 75.92222222222222,
-          "interval_width": 30.738748153596145,
-          "severe_coverage_80": 76.68455575432318
+          "coverage_80": 75.78888888888888,
+          "interval_width": 30.661768448100943,
+          "severe_coverage_80": 76.53548002385212,
+          "coverage_80_cqr": 80.10000000000001,
+          "interval_width_cqr": 33.56482581368924,
+          "severe_coverage_80_cqr": 79.81514609421586,
+          "cqr_offset": 1.4515286827941498
         },
         {
           "mae": 10.298759129692158,
@@ -134,9 +178,13 @@
           "severe_mae": 15.00404426848615,
           "severe_rmse": 21.783011036756847,
           "severe_n": 2778,
-          "coverage_80": 75.3224043715847,
-          "interval_width": 27.89940461198984,
-          "severe_coverage_80": 75.9899208063355
+          "coverage_80": 75.53005464480874,
+          "interval_width": 28.05417177917735,
+          "severe_coverage_80": 76.20590352771778,
+          "coverage_80_cqr": 80.26229508196721,
+          "interval_width_cqr": 30.35569030133295,
+          "severe_coverage_80_cqr": 79.40964722822174,
+          "cqr_offset": 1.150759261077802
         },
         {
           "mae": 11.732982085116015,
@@ -146,7 +194,11 @@
           "severe_n": 3140,
           "coverage_80": 74.28729281767956,
           "interval_width": 30.421146220397507,
-          "severe_coverage_80": 76.40127388535032
+          "severe_coverage_80": 76.40127388535032,
+          "coverage_80_cqr": 77.30386740331492,
+          "interval_width_cqr": 32.079004324612576,
+          "severe_coverage_80_cqr": 78.43949044585987,
+          "cqr_offset": 0.8289290521075374
         },
         {
           "mae": 10.28182397738039,
@@ -154,9 +206,13 @@
           "severe_mae": 14.622290529620097,
           "severe_rmse": 21.919070732197238,
           "severe_n": 2508,
-          "coverage_80": 74.36065573770492,
-          "interval_width": 27.641072387816656,
-          "severe_coverage_80": 75.95693779904306
+          "coverage_80": 74.37158469945355,
+          "interval_width": 27.66075613830055,
+          "severe_coverage_80": 76.03668261562999,
+          "coverage_80_cqr": 80.87431693989072,
+          "interval_width_cqr": 30.67371341717698,
+          "severe_coverage_80_cqr": 81.18022328548645,
+          "cqr_offset": 1.506478639438214
         }
       ],
       "mean": {
@@ -165,25 +221,29 @@
         "severe_mae": 15.48,
         "severe_rmse": 23.42,
         "severe_n": 2945.0,
-        "coverage_80": 74.97,
-        "interval_width": 29.18,
-        "severe_coverage_80": 76.26
+        "coverage_80": 74.99,
+        "interval_width": 29.2,
+        "severe_coverage_80": 76.29,
+        "coverage_80_cqr": 79.64,
+        "interval_width_cqr": 31.67,
+        "severe_coverage_80_cqr": 79.71,
+        "cqr_offset": 1.23
       },
       "per_route_coverage_80": {
         "ANC-SEA": {
-          "mean": 74.83,
+          "mean": 74.84,
           "min": 72.13,
-          "max": 76.24,
+          "max": 76.67,
           "n_folds": 4
         },
         "ATL-FLL": {
-          "mean": 73.73,
+          "mean": 73.72,
           "min": 71.58,
-          "max": 75.41,
+          "max": 76.5,
           "n_folds": 4
         },
         "ATL-LGA": {
-          "mean": 77.44,
+          "mean": 77.58,
           "min": 72.93,
           "max": 80.56,
           "n_folds": 4
@@ -195,9 +255,9 @@
           "n_folds": 4
         },
         "ATL-MIA": {
-          "mean": 74.28,
+          "mean": 74.14,
           "min": 73.48,
-          "max": 75.56,
+          "max": 75.0,
           "n_folds": 4
         },
         "BOS-DCA": {
@@ -219,39 +279,39 @@
           "n_folds": 4
         },
         "DEN-LAS": {
-          "mean": 74.4,
-          "min": 68.89,
-          "max": 79.23,
+          "mean": 74.67,
+          "min": 69.44,
+          "max": 79.78,
           "n_folds": 4
         },
         "DEN-LAX": {
-          "mean": 75.08,
+          "mean": 75.36,
           "min": 70.17,
           "max": 79.78,
           "n_folds": 4
         },
         "DEN-PHX": {
           "mean": 78.12,
-          "min": 73.89,
-          "max": 81.97,
+          "min": 73.33,
+          "max": 82.51,
           "n_folds": 4
         },
         "DEN-SLC": {
-          "mean": 79.78,
+          "mean": 79.65,
           "min": 76.5,
           "max": 81.42,
           "n_folds": 4
         },
         "DFW-LAX": {
-          "mean": 75.79,
-          "min": 72.13,
+          "mean": 76.06,
+          "min": 72.68,
           "max": 79.78,
           "n_folds": 4
         },
         "EWR-MCO": {
-          "mean": 70.84,
+          "mean": 71.11,
           "min": 65.75,
-          "max": 74.32,
+          "max": 74.86,
           "n_folds": 4
         },
         "FLL-ATL": {
@@ -261,21 +321,21 @@
           "n_folds": 4
         },
         "HNL-KOA": {
-          "mean": 78.68,
+          "mean": 78.82,
           "min": 76.24,
           "max": 80.56,
           "n_folds": 4
         },
         "HNL-LIH": {
-          "mean": 75.78,
+          "mean": 75.92,
           "min": 68.51,
-          "max": 82.51,
+          "max": 83.06,
           "n_folds": 4
         },
         "HNL-OGG": {
-          "mean": 75.64,
+          "mean": 75.78,
           "min": 66.3,
-          "max": 80.0,
+          "max": 80.56,
           "n_folds": 4
         },
         "JFK-LAX": {
@@ -285,9 +345,9 @@
           "n_folds": 4
         },
         "KOA-HNL": {
-          "mean": 75.11,
+          "mean": 75.24,
           "min": 71.27,
-          "max": 78.89,
+          "max": 79.78,
           "n_folds": 4
         },
         "LAS-DEN": {
@@ -297,32 +357,32 @@
           "n_folds": 4
         },
         "LAS-LAX": {
-          "mean": 68.09,
+          "mean": 67.96,
           "min": 64.48,
-          "max": 69.44,
+          "max": 69.4,
           "n_folds": 4
         },
         "LAX-DEN": {
-          "mean": 74.56,
+          "mean": 74.42,
           "min": 70.49,
           "max": 78.45,
           "n_folds": 4
         },
         "LAX-DFW": {
-          "mean": 68.51,
-          "min": 62.3,
+          "mean": 68.65,
+          "min": 62.84,
           "max": 72.22,
           "n_folds": 4
         },
         "LAX-JFK": {
-          "mean": 70.16,
+          "mean": 70.02,
           "min": 66.67,
           "max": 72.38,
           "n_folds": 4
         },
         "LAX-LAS": {
-          "mean": 72.08,
-          "min": 68.85,
+          "mean": 71.81,
+          "min": 68.31,
           "max": 75.69,
           "n_folds": 4
         },
@@ -333,26 +393,26 @@
           "n_folds": 4
         },
         "LAX-PHX": {
-          "mean": 77.16,
+          "mean": 77.44,
           "min": 72.78,
           "max": 82.87,
           "n_folds": 4
         },
         "LAX-SEA": {
-          "mean": 71.67,
+          "mean": 71.53,
           "min": 70.49,
           "max": 74.59,
           "n_folds": 4
         },
         "LAX-SFO": {
-          "mean": 80.34,
+          "mean": 80.33,
           "min": 74.03,
-          "max": 85.79,
+          "max": 86.34,
           "n_folds": 4
         },
         "LGA-ATL": {
-          "mean": 78.67,
-          "min": 75.56,
+          "mean": 78.53,
+          "min": 75.0,
           "max": 81.97,
           "n_folds": 4
         },
@@ -375,7 +435,7 @@
           "n_folds": 4
         },
         "MCO-ATL": {
-          "mean": 76.2,
+          "mean": 76.48,
           "min": 72.93,
           "max": 78.89,
           "n_folds": 4
@@ -383,7 +443,7 @@
         "MCO-EWR": {
           "mean": 74.02,
           "min": 63.39,
-          "max": 79.44,
+          "max": 79.78,
           "n_folds": 4
         },
         "MIA-ATL": {
@@ -393,7 +453,7 @@
           "n_folds": 4
         },
         "OGG-HNL": {
-          "mean": 70.44,
+          "mean": 70.3,
           "min": 63.54,
           "max": 76.67,
           "n_folds": 4
@@ -411,13 +471,13 @@
           "n_folds": 4
         },
         "PHX-DEN": {
-          "mean": 74.42,
+          "mean": 74.55,
           "min": 69.61,
           "max": 78.33,
           "n_folds": 4
         },
         "PHX-LAX": {
-          "mean": 79.24,
+          "mean": 79.1,
           "min": 75.96,
           "max": 80.66,
           "n_folds": 4
@@ -429,45 +489,347 @@
           "n_folds": 4
         },
         "SEA-ANC": {
-          "mean": 74.96,
-          "min": 72.13,
+          "mean": 74.95,
+          "min": 72.22,
           "max": 79.78,
           "n_folds": 4
         },
         "SEA-LAX": {
-          "mean": 74.55,
+          "mean": 74.41,
           "min": 72.68,
           "max": 76.5,
           "n_folds": 4
         },
         "SEA-PHX": {
-          "mean": 78.56,
+          "mean": 78.28,
           "min": 77.05,
-          "max": 81.67,
+          "max": 80.0,
           "n_folds": 4
         },
         "SEA-SFO": {
-          "mean": 76.35,
+          "mean": 76.9,
           "min": 71.82,
-          "max": 82.78,
+          "max": 83.33,
           "n_folds": 4
         },
         "SFO-LAX": {
-          "mean": 78.96,
-          "min": 77.6,
-          "max": 81.67,
+          "mean": 78.69,
+          "min": 77.05,
+          "max": 81.11,
           "n_folds": 4
         },
         "SFO-SEA": {
-          "mean": 72.77,
-          "min": 67.21,
-          "max": 75.96,
+          "mean": 72.91,
+          "min": 66.67,
+          "max": 76.5,
           "n_folds": 4
         },
         "SLC-DEN": {
           "mean": 78.28,
           "min": 73.22,
           "max": 84.44,
+          "n_folds": 4
+        }
+      },
+      "per_route_coverage_80_cqr": {
+        "ANC-SEA": {
+          "mean": 78.69,
+          "min": 77.05,
+          "max": 81.11,
+          "n_folds": 4
+        },
+        "ATL-FLL": {
+          "mean": 77.71,
+          "min": 75.14,
+          "max": 79.78,
+          "n_folds": 4
+        },
+        "ATL-LGA": {
+          "mean": 82.25,
+          "min": 77.9,
+          "max": 85.0,
+          "n_folds": 4
+        },
+        "ATL-MCO": {
+          "mean": 82.12,
+          "min": 79.78,
+          "max": 84.15,
+          "n_folds": 4
+        },
+        "ATL-MIA": {
+          "mean": 76.34,
+          "min": 75.14,
+          "max": 78.14,
+          "n_folds": 4
+        },
+        "BOS-DCA": {
+          "mean": 81.57,
+          "min": 78.69,
+          "max": 84.15,
+          "n_folds": 4
+        },
+        "BOS-LGA": {
+          "mean": 80.6,
+          "min": 76.5,
+          "max": 84.15,
+          "n_folds": 4
+        },
+        "DCA-BOS": {
+          "mean": 78.43,
+          "min": 72.13,
+          "max": 83.33,
+          "n_folds": 4
+        },
+        "DEN-LAS": {
+          "mean": 78.79,
+          "min": 74.44,
+          "max": 82.51,
+          "n_folds": 4
+        },
+        "DEN-LAX": {
+          "mean": 79.06,
+          "min": 72.38,
+          "max": 84.15,
+          "n_folds": 4
+        },
+        "DEN-PHX": {
+          "mean": 82.24,
+          "min": 79.44,
+          "max": 85.79,
+          "n_folds": 4
+        },
+        "DEN-SLC": {
+          "mean": 84.33,
+          "min": 80.87,
+          "max": 86.89,
+          "n_folds": 4
+        },
+        "DFW-LAX": {
+          "mean": 77.86,
+          "min": 73.22,
+          "max": 81.97,
+          "n_folds": 4
+        },
+        "EWR-MCO": {
+          "mean": 73.86,
+          "min": 67.96,
+          "max": 77.22,
+          "n_folds": 4
+        },
+        "FLL-ATL": {
+          "mean": 80.18,
+          "min": 71.82,
+          "max": 84.7,
+          "n_folds": 4
+        },
+        "HNL-KOA": {
+          "mean": 87.2,
+          "min": 81.77,
+          "max": 91.26,
+          "n_folds": 4
+        },
+        "HNL-LIH": {
+          "mean": 83.05,
+          "min": 75.14,
+          "max": 88.52,
+          "n_folds": 4
+        },
+        "HNL-OGG": {
+          "mean": 86.08,
+          "min": 77.9,
+          "max": 91.26,
+          "n_folds": 4
+        },
+        "JFK-LAX": {
+          "mean": 76.19,
+          "min": 71.11,
+          "max": 80.87,
+          "n_folds": 4
+        },
+        "KOA-HNL": {
+          "mean": 84.56,
+          "min": 77.35,
+          "max": 90.71,
+          "n_folds": 4
+        },
+        "LAS-DEN": {
+          "mean": 74.54,
+          "min": 71.27,
+          "max": 79.78,
+          "n_folds": 4
+        },
+        "LAS-LAX": {
+          "mean": 72.64,
+          "min": 68.85,
+          "max": 75.0,
+          "n_folds": 4
+        },
+        "LAX-DEN": {
+          "mean": 79.23,
+          "min": 77.22,
+          "max": 81.77,
+          "n_folds": 4
+        },
+        "LAX-DFW": {
+          "mean": 73.05,
+          "min": 68.31,
+          "max": 77.22,
+          "n_folds": 4
+        },
+        "LAX-JFK": {
+          "mean": 73.31,
+          "min": 68.85,
+          "max": 77.6,
+          "n_folds": 4
+        },
+        "LAX-LAS": {
+          "mean": 77.03,
+          "min": 75.41,
+          "max": 80.33,
+          "n_folds": 4
+        },
+        "LAX-ORD": {
+          "mean": 74.53,
+          "min": 71.11,
+          "max": 76.5,
+          "n_folds": 4
+        },
+        "LAX-PHX": {
+          "mean": 83.22,
+          "min": 80.56,
+          "max": 86.19,
+          "n_folds": 4
+        },
+        "LAX-SEA": {
+          "mean": 77.17,
+          "min": 73.77,
+          "max": 79.56,
+          "n_folds": 4
+        },
+        "LAX-SFO": {
+          "mean": 84.04,
+          "min": 75.69,
+          "max": 90.16,
+          "n_folds": 4
+        },
+        "LGA-ATL": {
+          "mean": 80.87,
+          "min": 76.67,
+          "max": 84.7,
+          "n_folds": 4
+        },
+        "LGA-BOS": {
+          "mean": 78.28,
+          "min": 74.32,
+          "max": 82.32,
+          "n_folds": 4
+        },
+        "LGA-ORD": {
+          "mean": 80.58,
+          "min": 76.67,
+          "max": 85.25,
+          "n_folds": 4
+        },
+        "LIH-HNL": {
+          "mean": 77.83,
+          "min": 66.3,
+          "max": 83.06,
+          "n_folds": 4
+        },
+        "MCO-ATL": {
+          "mean": 82.25,
+          "min": 76.24,
+          "max": 86.89,
+          "n_folds": 4
+        },
+        "MCO-EWR": {
+          "mean": 77.47,
+          "min": 65.57,
+          "max": 83.33,
+          "n_folds": 4
+        },
+        "MIA-ATL": {
+          "mean": 76.62,
+          "min": 73.22,
+          "max": 79.56,
+          "n_folds": 4
+        },
+        "OGG-HNL": {
+          "mean": 80.17,
+          "min": 69.06,
+          "max": 85.79,
+          "n_folds": 4
+        },
+        "ORD-LAX": {
+          "mean": 75.77,
+          "min": 71.27,
+          "max": 79.23,
+          "n_folds": 4
+        },
+        "ORD-LGA": {
+          "mean": 82.95,
+          "min": 80.33,
+          "max": 85.08,
+          "n_folds": 4
+        },
+        "PHX-DEN": {
+          "mean": 79.5,
+          "min": 73.48,
+          "max": 83.33,
+          "n_folds": 4
+        },
+        "PHX-LAX": {
+          "mean": 83.22,
+          "min": 81.97,
+          "max": 84.44,
+          "n_folds": 4
+        },
+        "PHX-SEA": {
+          "mean": 80.45,
+          "min": 74.44,
+          "max": 86.34,
+          "n_folds": 4
+        },
+        "SEA-ANC": {
+          "mean": 78.94,
+          "min": 77.05,
+          "max": 84.15,
+          "n_folds": 4
+        },
+        "SEA-LAX": {
+          "mean": 78.81,
+          "min": 76.8,
+          "max": 80.33,
+          "n_folds": 4
+        },
+        "SEA-PHX": {
+          "mean": 82.39,
+          "min": 80.87,
+          "max": 84.15,
+          "n_folds": 4
+        },
+        "SEA-SFO": {
+          "mean": 81.3,
+          "min": 74.59,
+          "max": 87.22,
+          "n_folds": 4
+        },
+        "SFO-LAX": {
+          "mean": 84.6,
+          "min": 80.66,
+          "max": 89.44,
+          "n_folds": 4
+        },
+        "SFO-SEA": {
+          "mean": 76.76,
+          "min": 73.22,
+          "max": 79.23,
+          "n_folds": 4
+        },
+        "SLC-DEN": {
+          "mean": 83.08,
+          "min": 77.9,
+          "max": 86.11,
           "n_folds": 4
         }
       }
@@ -481,9 +843,13 @@
           "severe_mae": 16.217664748281127,
           "severe_rmse": 24.455854888641838,
           "severe_n": 3354,
-          "coverage_80": 75.9306589621069,
-          "interval_width": 30.449251929452025,
-          "severe_coverage_80": 76.80381633870006
+          "coverage_80": 75.87509723302588,
+          "interval_width": 30.449502834422443,
+          "severe_coverage_80": 76.80381633870006,
+          "coverage_80_cqr": 80.48672074674964,
+          "interval_width_cqr": 33.63645898697281,
+          "severe_coverage_80_cqr": 79.90459153249851,
+          "cqr_offset": 1.5934780762751846
         },
         {
           "mae": 10.242819764246631,
@@ -492,8 +858,12 @@
           "severe_rmse": 21.727757267554466,
           "severe_n": 2778,
           "coverage_80": 75.00546448087432,
-          "interval_width": 27.67907767650596,
-          "severe_coverage_80": 75.23398128149748
+          "interval_width": 27.688168473777157,
+          "severe_coverage_80": 75.26997840172787,
+          "coverage_80_cqr": 79.91256830601094,
+          "interval_width_cqr": 29.951830359291172,
+          "severe_coverage_80_cqr": 78.83369330453563,
+          "cqr_offset": 1.131830942757011
         },
         {
           "mae": 11.667794561946378,
@@ -501,9 +871,13 @@
           "severe_mae": 16.078836186537373,
           "severe_rmse": 25.5733381092597,
           "severe_n": 3140,
-          "coverage_80": 74.38674033149171,
-          "interval_width": 30.323702266387645,
-          "severe_coverage_80": 76.21019108280255
+          "coverage_80": 74.353591160221,
+          "interval_width": 30.30263347801104,
+          "severe_coverage_80": 76.14649681528662,
+          "coverage_80_cqr": 77.4475138121547,
+          "interval_width_cqr": 32.01130245198703,
+          "severe_coverage_80_cqr": 78.43949044585987,
+          "cqr_offset": 0.8543344869879945
         },
         {
           "mae": 10.25945799489494,
@@ -511,9 +885,13 @@
           "severe_mae": 14.60103411954764,
           "severe_rmse": 21.92670460748161,
           "severe_n": 2506,
-          "coverage_80": 73.77568867512025,
-          "interval_width": 27.32108889504251,
-          "severe_coverage_80": 75.85794094173983
+          "coverage_80": 73.75382597289025,
+          "interval_width": 27.322067991918516,
+          "severe_coverage_80": 75.77813248204309,
+          "coverage_80_cqr": 80.80454744206384,
+          "interval_width_cqr": 30.43427049041807,
+          "severe_coverage_80_cqr": 80.80606544293694,
+          "cqr_offset": 1.556101249249778
         }
       ],
       "mean": {
@@ -522,9 +900,13 @@
         "severe_mae": 15.45,
         "severe_rmse": 23.42,
         "severe_n": 2944.5,
-        "coverage_80": 74.77,
+        "coverage_80": 74.75,
         "interval_width": 28.94,
-        "severe_coverage_80": 76.03
+        "severe_coverage_80": 76.0,
+        "coverage_80_cqr": 79.66,
+        "interval_width_cqr": 31.51,
+        "severe_coverage_80_cqr": 79.5,
+        "cqr_offset": 1.28
       }
     }
   }

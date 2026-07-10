@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 import optuna
-import pandas as pd
 import torch
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
@@ -13,10 +12,11 @@ from src import tracking
 from src.models.lstm import RouteDelayLSTM, LSTMTrainer
 from src.models.device import get_device
 from src.config import (
-    TRAIN_END, VAL_END, DATA_START,
+    HPO_TRAIN_END, HPO_VAL_END, DATA_START,
     SEQUENCE_LENGTH, SEQUENCE_MODEL_FEATURES,
 )
 from src.training.sequence_utils import create_sequences_by_date, evaluate_model
+from src.training.fold_features import RAW_PATH, build_fold_features, load_raw
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -27,16 +27,14 @@ CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
 
 def load_data():
     """Loads features.csv, builds sequences for train and val."""
-    df = pd.read_csv(DATA_DIR / "features.csv")
-    df["date"] = pd.to_datetime(df["date"])
-    df = df.sort_values(["route", "date"]).reset_index(drop=True)
+    df = build_fold_features(load_raw(), HPO_TRAIN_END)
 
     available_features = [c for c in SEQUENCE_MODEL_FEATURES if c in df.columns]
     target_col = "avg_arr_delay"
 
     df_clean = df.dropna(subset=available_features + [target_col])
 
-    train_mask = df_clean["date"] < TRAIN_END
+    train_mask = df_clean["date"] < HPO_TRAIN_END
     scaler = StandardScaler()
     scaler.fit(df_clean.loc[train_mask, available_features].values)
 
@@ -45,12 +43,12 @@ def load_data():
 
     train_X, train_y = create_sequences_by_date(
         df_clean, available_features, target_col, scaler,
-        start_date=DATA_START, end_date=TRAIN_END,
+        start_date=DATA_START, end_date=HPO_TRAIN_END,
         sequence_length=SEQUENCE_LENGTH, target_scaler=target_scaler,
     )
     val_X, val_y = create_sequences_by_date(
         df_clean, available_features, target_col, scaler,
-        start_date=TRAIN_END, end_date=VAL_END,
+        start_date=HPO_TRAIN_END, end_date=HPO_VAL_END,
         sequence_length=SEQUENCE_LENGTH, target_scaler=target_scaler,
     )
 
@@ -117,7 +115,11 @@ def main():
     print(f"sequences: train={len(train_X):,}  val={len(val_X):,}")
 
     pruner = optuna.pruners.MedianPruner(n_startup_trials=10)
-    study = optuna.create_study(direction="minimize", pruner=pruner)
+    study = optuna.create_study(
+        direction="minimize",
+        sampler=optuna.samplers.TPESampler(seed=42),
+        pruner=pruner,
+    )
     study.optimize(
         lambda trial: objective(
             trial, train_X, train_y, val_X, val_y,
@@ -136,9 +138,9 @@ def main():
 
     print(f"Saved to {output_path}")
 
-    provenance = tracking.provenance_tags(features_path=DATA_DIR / "features.csv")
+    provenance = tracking.provenance_tags(features_path=RAW_PATH)
     with tracking.start_run(run_name="tune_lstm", tags=provenance):
-        tracking.log_params(study.best_params)
+        tracking.log_params({**study.best_params, "sampler_seed": 42})
         tracking.log_metrics({"best_val_mae": study.best_value, "n_trials": len(study.trials)})
         tracking.log_artifact(output_path)
 

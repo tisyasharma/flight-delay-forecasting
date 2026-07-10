@@ -15,6 +15,8 @@ __all__ = [
     "TEST_START",
     "TEST_END",
     "DATA_START",
+    "HPO_TRAIN_END",
+    "HPO_VAL_END",
     "COVID_START",
     "COVID_PEAK_END",
     "COVID_RECOVERY_END",
@@ -27,6 +29,12 @@ VAL_END = "2024-07-01"
 TEST_START = "2024-07-01"
 TEST_END = "2025-06-30"
 DATA_START = "2019-01-01"
+
+# hyperparameter search holdout, fold 0's validation slice. every later
+# half-year window in 2023-2024 is some walk-forward fold's test window and
+# 2025 H1 is the locked final test, so this is the only clean choice
+HPO_TRAIN_END = "2022-07-01"
+HPO_VAL_END = "2023-01-01"
 
 COVID_START = "2020-03-01"
 COVID_PEAK_END = "2021-06-01"

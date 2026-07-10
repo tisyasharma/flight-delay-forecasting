@@ -3,12 +3,12 @@ from pathlib import Path
 
 import numpy as np
 import optuna
-import pandas as pd
 import xgboost as xgb
 
 from src import tracking
-from src.config import TRAIN_END, VAL_END, TABULAR_FEATURES
+from src.config import HPO_TRAIN_END, HPO_VAL_END, TABULAR_FEATURES
 from src.evaluation.metrics import calculate_delay_metrics
+from src.training.fold_features import RAW_PATH, build_fold_features, load_raw
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -18,16 +18,18 @@ CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_splits():
-    """Loads features.csv and splits into train/val arrays."""
-    df = pd.read_csv(DATA_DIR / "features.csv")
-    df["date"] = pd.to_datetime(df["date"])
-    df = df.sort_values(["route", "date"]).reset_index(drop=True)
+    """
+    Builds features gated at the HPO cutoff and splits into train/val arrays.
+    The canonical features.csv is not used here, its train-window statistics
+    are computed at the production cutoff and would leak into the HPO holdout.
+    """
+    df = build_fold_features(load_raw(), HPO_TRAIN_END)
 
     available_features = [c for c in TABULAR_FEATURES if c in df.columns]
     target_col = "avg_arr_delay"
 
-    train_df = df[df["date"] < TRAIN_END].dropna(subset=available_features + [target_col])
-    val_df = df[(df["date"] >= TRAIN_END) & (df["date"] < VAL_END)].dropna(
+    train_df = df[df["date"] < HPO_TRAIN_END].dropna(subset=available_features + [target_col])
+    val_df = df[(df["date"] >= HPO_TRAIN_END) & (df["date"] < HPO_VAL_END)].dropna(
         subset=available_features + [target_col]
     )
 
@@ -71,7 +73,9 @@ def main():
     X_train, y_train, X_val, y_val = load_splits()
     print(f"train={len(X_train):,}  val={len(X_val):,}")
 
-    study = optuna.create_study(direction="minimize")
+    study = optuna.create_study(
+        direction="minimize", sampler=optuna.samplers.TPESampler(seed=42)
+    )
     study.optimize(
         lambda trial: objective(trial, X_train, y_train, X_val, y_val),
         n_trials=50,
@@ -87,9 +91,9 @@ def main():
 
     print(f"Saved to {output_path}")
 
-    provenance = tracking.provenance_tags(features_path=DATA_DIR / "features.csv")
+    provenance = tracking.provenance_tags(features_path=RAW_PATH)
     with tracking.start_run(run_name="tune_xgboost", tags=provenance):
-        tracking.log_params(study.best_params)
+        tracking.log_params({**study.best_params, "sampler_seed": 42})
         tracking.log_metrics({"best_val_mae": study.best_value, "n_trials": len(study.trials)})
         tracking.log_artifact(output_path)
 

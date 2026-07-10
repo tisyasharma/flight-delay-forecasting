@@ -14,6 +14,7 @@ from src.config import (
 from src import tracking
 from src.evaluation.conformal import apply_cqr, cqr_offset
 from src.evaluation.metrics import (
+    calculate_classification_metrics,
     calculate_delay_metrics,
     calculate_quantile_metrics,
     interval_coverage,
@@ -389,6 +390,55 @@ def eval_moving_average(df, target_col, fold):
     )
 
 
+def eval_lightgbm_classifier(df, features, target_col, fold):
+    """
+    Trains a P(mean delay > 15 min) classifier on one fold and returns
+    decision-framed metrics (PR-AUC, ROC-AUC, base rate, Brier). This is the
+    metric that maps to an actual decision, unlike MAE on a noisy aggregate.
+    """
+    params = load_params("lightgbm")
+    threshold = 15
+
+    train_df = df[df["date"] < fold["train_end"]].dropna(subset=features + [target_col])
+    val_df = df[
+        (df["date"] >= fold["train_end"]) & (df["date"] < fold["val_end"])
+    ].dropna(subset=features + [target_col])
+    test_df = df[
+        (df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])
+    ].dropna(subset=features + [target_col])
+
+    y_train = (train_df[target_col].values > threshold).astype(int)
+    if len(test_df) == 0 or y_train.sum() == 0 or y_train.sum() == len(y_train):
+        return None
+
+    clf_params = {
+        "n_estimators": params.get("n_estimators", 500),
+        "num_leaves": params.get("num_leaves", 63),
+        "learning_rate": params.get("learning_rate", 0.1),
+        "subsample": params.get("subsample", 0.8),
+        "subsample_freq": params.get("subsample_freq", 0),
+        "colsample_bytree": params.get("colsample_bytree", 0.8),
+        "min_child_samples": params.get("min_child_samples", 20),
+        "reg_alpha": params.get("reg_alpha", 1e-6),
+        "reg_lambda": params.get("reg_lambda", 1e-6),
+        "max_depth": -1,
+        "random_state": 42,
+        "n_jobs": -1,
+        "verbose": -1,
+    }
+
+    model = lgb.LGBMClassifier(objective="binary", **clf_params)
+    model.fit(
+        train_df[features].values, y_train,
+        eval_set=[(val_df[features].values, (val_df[target_col].values > threshold).astype(int))],
+        eval_metric="average_precision",
+        callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)],
+    )
+
+    proba = model.predict_proba(test_df[features].values)[:, 1]
+    return calculate_classification_metrics(test_df[target_col].values, proba, threshold)
+
+
 def eval_seasonal_naive(df, target_col, fold):
     """Evaluates the seasonal naive baseline (same weekday last week) on one fold."""
     from src.models.simple_baselines import SeasonalNaiveBaseline
@@ -449,6 +499,7 @@ def aggregate_fold_metrics(all_fold_metrics):
         "coverage_80", "interval_width", "coverage_80_cqr", "interval_width_cqr",
         "pinball_10", "pinball_50", "pinball_90",
         "below_q10", "below_q50", "below_q90",
+        "pr_auc", "roc_auc", "base_rate", "brier",
     ]
     result = {}
 
@@ -501,6 +552,7 @@ def main():
         "xgboost": {"func": train_eval_xgboost, "features": "tabular"},
         "lightgbm": {"func": train_eval_lightgbm, "features": "tabular"},
         "lightgbm_q": {"func": train_eval_lightgbm_quantile, "features": "tabular"},
+        "lightgbm_clf": {"func": eval_lightgbm_classifier, "features": "tabular"},
         "lstm": {"func": train_eval_lstm, "features": "seq"},
         "tcn": {"func": train_eval_tcn, "features": "seq"},
     }
@@ -550,7 +602,12 @@ def main():
 
             if metrics:
                 results[model_name].append(metrics)
-                print(f"MAE={metrics['mae']:.2f}, within_15={metrics['within_15']:.1f}%")
+                if metrics.get("mae") is not None:
+                    print(f"MAE={metrics['mae']:.2f}, within_15={metrics['within_15']:.1f}%")
+                elif metrics.get("pr_auc") is not None:
+                    print(f"PR-AUC={metrics['pr_auc']:.3f}, base_rate={metrics['base_rate']:.1f}%")
+                else:
+                    print("done")
             else:
                 print("skipped (no test data)")
 

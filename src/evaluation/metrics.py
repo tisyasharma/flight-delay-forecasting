@@ -95,6 +95,36 @@ def calculate_quantile_metrics(y_true, quantile_preds, alphas=(0.1, 0.5, 0.9)):
     return result
 
 
+def calculate_classification_metrics(y_true, y_score, threshold=15):
+    """
+    Decision-framed metrics for flagging bad-delay days, where the day's mean
+    delay exceeds the threshold. y_true is the continuous delay (binarized
+    here), y_score is the predicted probability of exceeding the threshold.
+    PR-AUC is the headline because the positive class is the minority and a
+    missed bad-delay day costs more than a false alarm; base rate is reported
+    so the lift over chance is legible. Returns an all-None dict when a fold
+    has a single class.
+    """
+    from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
+
+    y_true = np.asarray(y_true, dtype=float).flatten()
+    y_score = np.asarray(y_score, dtype=float).flatten()
+
+    mask = ~(np.isnan(y_true) | np.isnan(y_score))
+    y_bin = (y_true[mask] > threshold).astype(int)
+    y_score = y_score[mask]
+
+    if len(y_bin) == 0 or y_bin.sum() == 0 or y_bin.sum() == len(y_bin):
+        return {"pr_auc": None, "roc_auc": None, "base_rate": None, "brier": None}
+
+    return {
+        "pr_auc": float(average_precision_score(y_bin, y_score)),
+        "roc_auc": float(roc_auc_score(y_bin, y_score)),
+        "base_rate": float(y_bin.mean() * 100),
+        "brier": float(brier_score_loss(y_bin, y_score)),
+    }
+
+
 def calculate_metrics(y_true, y_pred):
     """Basic regression metrics (RMSE, MAE, MAPE, R2)."""
     y_true = np.array(y_true).flatten()

@@ -570,6 +570,48 @@
           88.32
         ]
       }
+    },
+    "lightgbm_clf": {
+      "pr_auc": {
+        "mean": 0.61,
+        "std": 0.01,
+        "folds": [
+          0.61,
+          0.61,
+          0.61,
+          0.63
+        ]
+      },
+      "roc_auc": {
+        "mean": 0.82,
+        "std": 0.02,
+        "folds": [
+          0.79,
+          0.84,
+          0.81,
+          0.85
+        ]
+      },
+      "base_rate": {
+        "mean": 22.64,
+        "std": 3.35,
+        "folds": [
+          26.92,
+          19.86,
+          24.87,
+          18.92
+        ]
+      },
+      "brier": {
+        "mean": 0.13,
+        "std": 0.02,
+        "folds": [
+          0.16,
+          0.11,
+          0.14,
+          0.11
+        ]
+      }
     }
   },
   "runs": {
@@ -614,6 +656,12 @@
       "hpo_window": "2022-07-01 to 2023-01-01",
       "params": "configs/best_params_*.json",
       "git_sha": "c3c51ed"
+    },
+    "lightgbm_clf": {
+      "feature_state": "rebuilt per fold at each fold's train_end",
+      "hpo_window": "2022-07-01 to 2023-01-01",
+      "params": "configs/best_params_*.json",
+      "git_sha": "a86ee72"
     }
   }
 }

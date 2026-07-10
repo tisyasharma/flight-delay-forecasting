@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from src.evaluation.metrics import (
+    calculate_classification_metrics,
     calculate_delay_metrics,
     calculate_metrics,
     calculate_metrics_by_segment,
@@ -20,6 +21,23 @@ from src.evaluation.metrics import (
     rmse,
     sort_quantile_predictions,
 )
+
+
+def test_classification_metrics_perfect_and_baserate():
+    """A perfect score gives PR-AUC 1.0 and reports the base rate as a percent."""
+    delay = np.array([5.0, 20.0, 8.0, 30.0, 2.0])  # 2 of 5 exceed 15 min
+    score = np.array([0.1, 0.9, 0.2, 0.95, 0.05])
+    m = calculate_classification_metrics(delay, score, threshold=15)
+    assert m["pr_auc"] == 1.0
+    assert m["base_rate"] == 40.0
+    assert 0.0 <= m["brier"] <= 1.0
+
+
+def test_classification_metrics_single_class_returns_none():
+    """A fold where nothing crosses the threshold cannot be scored."""
+    delay = np.array([1.0, 2.0, 3.0])
+    m = calculate_classification_metrics(delay, np.array([0.2, 0.3, 0.1]), threshold=15)
+    assert m == {"pr_auc": None, "roc_auc": None, "base_rate": None, "brier": None}
 
 
 def test_rmse_and_mae_known_values():

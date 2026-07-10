@@ -5,11 +5,10 @@ from pathlib import Path
 
 import lightgbm as lgb
 import numpy as np
-import pandas as pd
 import xgboost as xgb
 
 from src.config import (
-    DATA_START, SEQUENCE_LENGTH, WALK_FORWARD_FOLDS,
+    DATA_START, HPO_TRAIN_END, HPO_VAL_END, SEQUENCE_LENGTH, WALK_FORWARD_FOLDS,
     TABULAR_FEATURES, SEQUENCE_MODEL_FEATURES,
 )
 from src import tracking
@@ -18,12 +17,12 @@ from src.evaluation.metrics import (
     calculate_quantile_metrics,
     sort_quantile_predictions,
 )
+from src.training.fold_features import RAW_PATH, build_fold_features, load_raw
 
 QUANTILE_ALPHAS = (0.1, 0.5, 0.9)
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
-DATA_DIR = PROJECT_ROOT / "data" / "processed"
 CONFIGS_DIR = PROJECT_ROOT / "configs"
 OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -376,11 +375,65 @@ def eval_moving_average(df, target_col, fold):
     )
 
 
+def eval_seasonal_naive(df, target_col, fold):
+    """Evaluates the seasonal naive baseline (same weekday last week) on one fold."""
+    from src.models.simple_baselines import SeasonalNaiveBaseline
+
+    train_df = df[df["date"] < fold["train_end"]]
+    test_df = df[(df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])]
+
+    if len(test_df) == 0:
+        return None
+
+    model = SeasonalNaiveBaseline(seasonality=7, target_col=target_col)
+    model.fit(train_df)
+    preds = model.predict(test_df)
+
+    valid_mask = preds.notna()
+    return calculate_delay_metrics(
+        test_df.loc[valid_mask, target_col].values,
+        preds[valid_mask].values
+    )
+
+
+def eval_climatology_quantile(df, target_col, fold):
+    """
+    Per-route trailing empirical quantiles as the no-skill benchmark for the
+    quantile models. Quantiles use trailing actuals only (shift by one, then
+    a 90-day window) computed across the whole frame, scored on test rows.
+    """
+    test_mask = (df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])
+    if not test_mask.any():
+        return None
+
+    grouped = df.groupby("route")[target_col]
+    quantile_cols = []
+    for alpha in QUANTILE_ALPHAS:
+        trailing = grouped.transform(
+            lambda s, a=alpha: s.shift(1).rolling(90, min_periods=30).quantile(a)
+        )
+        quantile_cols.append(trailing[test_mask].values)
+
+    preds = np.column_stack(quantile_cols)
+    y_test = df.loc[test_mask, target_col].values
+    valid = ~np.isnan(preds).any(axis=1) & ~np.isnan(y_test)
+    if not valid.any():
+        return None
+
+    sorted_preds = sort_quantile_predictions(preds[valid])
+    y_valid = y_test[valid]
+
+    metrics = calculate_delay_metrics(y_valid, sorted_preds[:, len(QUANTILE_ALPHAS) // 2])
+    metrics.update(calculate_quantile_metrics(y_valid, sorted_preds, alphas=QUANTILE_ALPHAS))
+    return metrics
+
+
 def aggregate_fold_metrics(all_fold_metrics):
     """Computes mean and std for each metric across folds."""
     metric_keys = [
         "mae", "rmse", "r2", "within_15", "median_ae",
         "coverage_80", "interval_width", "pinball_10", "pinball_50", "pinball_90",
+        "below_q10", "below_q50", "below_q90",
     ]
     result = {}
 
@@ -422,22 +475,19 @@ def main():
     random.seed(42)
     np.random.seed(42)
 
-    df = pd.read_csv(DATA_DIR / "features.csv")
-    df["date"] = pd.to_datetime(df["date"])
-    df = df.sort_values(["route", "date"]).reset_index(drop=True)
-
-    tabular_features = [c for c in TABULAR_FEATURES if c in df.columns]
-    seq_features = [c for c in SEQUENCE_MODEL_FEATURES if c in df.columns]
+    raw_df = load_raw()
     target_col = "avg_arr_delay"
 
     models = {
         "naive": {"func": eval_naive, "features": None},
         "ma": {"func": eval_moving_average, "features": None},
-        "xgboost": {"func": train_eval_xgboost, "features": tabular_features},
-        "lightgbm": {"func": train_eval_lightgbm, "features": tabular_features},
-        "lightgbm_q": {"func": train_eval_lightgbm_quantile, "features": tabular_features},
-        "lstm": {"func": train_eval_lstm, "features": seq_features},
-        "tcn": {"func": train_eval_tcn, "features": seq_features},
+        "seasonal_naive": {"func": eval_seasonal_naive, "features": None},
+        "climatology_q": {"func": eval_climatology_quantile, "features": None},
+        "xgboost": {"func": train_eval_xgboost, "features": "tabular"},
+        "lightgbm": {"func": train_eval_lightgbm, "features": "tabular"},
+        "lightgbm_q": {"func": train_eval_lightgbm_quantile, "features": "tabular"},
+        "lstm": {"func": train_eval_lstm, "features": "seq"},
+        "tcn": {"func": train_eval_tcn, "features": "seq"},
     }
 
     selected = parse_model_selection(models, args.models)
@@ -454,25 +504,34 @@ def main():
         device = get_device()
         print(f"device: {device}")
 
-    print(f"{len(df):,} samples")
-    print(f"Tabular features: {len(tabular_features)}, Sequence features: {len(seq_features)}")
+    print(f"{len(raw_df):,} route-day rows")
     print(f"Models: {', '.join(models)}")
     print(f"{len(WALK_FORWARD_FOLDS)} folds\n")
 
     results = {name: [] for name in models}
+    feature_lists = {"tabular": [], "seq": []}
 
     for fold_idx, fold in enumerate(WALK_FORWARD_FOLDS):
         print(f"Fold {fold_idx + 1}: test {fold['test_start']} to {fold['test_end']}")
 
+        # feature statistics are rebuilt at this fold's own train_end so no
+        # post-cutoff target information reaches the fold through route stats
+        # or fill medians
+        print("  building fold features...", flush=True)
+        fold_df = build_fold_features(raw_df, fold["train_end"])
+        feature_lists["tabular"] = [c for c in TABULAR_FEATURES if c in fold_df.columns]
+        feature_lists["seq"] = [c for c in SEQUENCE_MODEL_FEATURES if c in fold_df.columns]
+
         for model_name, config in models.items():
             print(f"  {model_name}...", end=" ", flush=True)
 
-            if model_name in ("naive", "ma"):
-                metrics = config["func"](df, target_col, fold)
+            features = feature_lists[config["features"]] if config["features"] else None
+            if config["features"] is None:
+                metrics = config["func"](fold_df, target_col, fold)
             elif model_name in ("lstm", "tcn"):
-                metrics = config["func"](df, config["features"], target_col, fold, device)
+                metrics = config["func"](fold_df, features, target_col, fold, device)
             else:
-                metrics = config["func"](df, config["features"], target_col, fold)
+                metrics = config["func"](fold_df, features, target_col, fold)
 
             if metrics:
                 results[model_name].append(metrics)
@@ -491,7 +550,14 @@ def main():
         mae = agg.get("mae", {})
         print(f"  {model_name:12s}: MAE {mae.get('mean', 'N/A')} +/- {mae.get('std', 'N/A')}")
 
+    # the methodology block is rewritten on every run so a mixed file can
+    # never masquerade as a homogeneous one
     output = {
+        "methodology": {
+            "feature_state": "rebuilt per fold at each fold's train_end",
+            "hpo_window": f"{HPO_TRAIN_END} to {HPO_VAL_END}",
+            "params": "configs/best_params_*.json",
+        },
         "n_folds": len(WALK_FORWARD_FOLDS),
         "folds": WALK_FORWARD_FOLDS,
         "models": {},
@@ -512,16 +578,16 @@ def main():
 
     # tracking runs last so a store failure can never cost the results file,
     # one parent run per model with a nested run per fold, no-op without mlflow
-    provenance = tracking.provenance_tags(features_df=df, features_path=DATA_DIR / "features.csv")
+    provenance = tracking.provenance_tags(features_df=raw_df, features_path=RAW_PATH)
     for model_name, fold_metrics in results.items():
         with tracking.start_run(
             run_name=f"walk_forward_{model_name}", tags={"stage": "walk_forward", **provenance}
         ):
-            features = models[model_name]["features"]
+            features_kind = models[model_name]["features"]
             tracking.log_params({
                 "model": model_name,
                 "n_folds": len(WALK_FORWARD_FOLDS),
-                "n_features": len(features) if features else 0,
+                "n_features": len(feature_lists[features_kind]) if features_kind else 0,
             })
             for fold_idx, metrics in enumerate(fold_metrics):
                 with tracking.start_run(run_name=f"fold_{fold_idx + 1}", nested=True):

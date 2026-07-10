@@ -60,7 +60,9 @@ def sort_quantile_predictions(quantile_preds):
 
 def calculate_quantile_metrics(y_true, quantile_preds, alphas=(0.1, 0.5, 0.9)):
     """
-    Pinball loss per quantile plus coverage and width of the outer interval.
+    Pinball loss per quantile, coverage and width of the outer interval, and
+    per-quantile calibration (the empirical fraction of actuals at or below
+    each predicted quantile, ideally 100 * alpha).
     quantile_preds is (n, len(alphas)) with columns ordered like alphas.
     Same conventions as calculate_delay_metrics: rows with a NaN actual or a
     NaN in any quantile column are masked, empty input returns all-None.
@@ -69,6 +71,7 @@ def calculate_quantile_metrics(y_true, quantile_preds, alphas=(0.1, 0.5, 0.9)):
     preds = np.asarray(quantile_preds, dtype=float)
 
     pinball_keys = [f"pinball_{int(round(a * 100))}" for a in alphas]
+    below_keys = [f"below_q{int(round(a * 100))}" for a in alphas]
     coverage_key = f"coverage_{int(round((alphas[-1] - alphas[0]) * 100))}"
 
     mask = ~(np.isnan(y_true) | np.isnan(preds).any(axis=1))
@@ -76,7 +79,7 @@ def calculate_quantile_metrics(y_true, quantile_preds, alphas=(0.1, 0.5, 0.9)):
     preds = preds[mask]
 
     if len(y_true) == 0:
-        result = {key: None for key in pinball_keys}
+        result = {key: None for key in pinball_keys + below_keys}
         result[coverage_key] = None
         result["interval_width"] = None
         return result
@@ -85,6 +88,8 @@ def calculate_quantile_metrics(y_true, quantile_preds, alphas=(0.1, 0.5, 0.9)):
         key: float(pinball_loss(y_true, preds[:, i], alpha))
         for i, (key, alpha) in enumerate(zip(pinball_keys, alphas))
     }
+    for i, key in enumerate(below_keys):
+        result[key] = float(np.mean(y_true <= preds[:, i]) * 100)
     result[coverage_key] = float(interval_coverage(y_true, preds[:, 0], preds[:, -1]))
     result["interval_width"] = float(interval_width(preds[:, 0], preds[:, -1]))
     return result

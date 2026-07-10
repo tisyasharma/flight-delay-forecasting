@@ -186,8 +186,24 @@ def test_calculate_quantile_metrics_key_naming_rounds():
     y_true = np.array([10.0])
     preds = np.array([[8.0, 10.0, 12.0]])
     result = calculate_quantile_metrics(y_true, preds, alphas=(0.05, 0.5, 0.95))
-    expected_keys = {"pinball_5", "pinball_50", "pinball_95", "coverage_90", "interval_width"}
+    expected_keys = {
+        "pinball_5", "pinball_50", "pinball_95",
+        "below_q5", "below_q50", "below_q95",
+        "coverage_90", "interval_width",
+    }
     assert set(result) == expected_keys
+
+
+def test_calculate_quantile_metrics_per_quantile_calibration():
+    """Hand-checked per-quantile calibration on constant quantile columns."""
+    y_true = np.arange(10, dtype=float)
+    # 2 of 10 actuals at or below q10, 5 at or below q50, 9 at or below q90
+    preds = np.tile([1.0, 4.0, 8.0], (10, 1))
+    result = calculate_quantile_metrics(y_true, preds)
+
+    assert result["below_q10"] == 20.0
+    assert result["below_q50"] == 50.0
+    assert result["below_q90"] == 90.0
 
 
 def test_calculate_quantile_metrics_all_nan_returns_none_dict():
@@ -196,6 +212,7 @@ def test_calculate_quantile_metrics_all_nan_returns_none_dict():
     preds = np.ones((2, 3))
     expected = {
         "pinball_10": None, "pinball_50": None, "pinball_90": None,
+        "below_q10": None, "below_q50": None, "below_q90": None,
         "coverage_80": None, "interval_width": None,
     }
     assert calculate_quantile_metrics(y_true, preds) == expected

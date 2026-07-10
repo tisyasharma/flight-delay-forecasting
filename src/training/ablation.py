@@ -26,9 +26,9 @@ from src.evaluation.metrics import (
     sort_quantile_predictions,
 )
 from src.features.registry import FEATURE_GROUPS, TABULAR_FEATURES
+from src.training.fold_features import RAW_PATH, build_fold_features, load_raw
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DATA_PATH = PROJECT_ROOT / "data" / "processed" / "features.csv"
 HUB_INBOUND_PATH = PROJECT_ROOT / "data" / "processed" / "hub_inbound_daily.csv"
 PARAMS_PATH = PROJECT_ROOT / "configs" / "best_params_lightgbm.json"
 OUTPUT_PATH = PROJECT_ROOT / "outputs" / "ablation.json"
@@ -80,8 +80,11 @@ def add_allinbound_hub(df):
     return out
 
 
-def evaluate_fold(df, features, params, fold):
-    """Fits point and quantile models on one fold, returns overall and severe metrics."""
+def evaluate_fold(df, features, params, fold, per_route=False):
+    """
+    Fits point and quantile models on one fold, returns overall and severe
+    metrics, optionally with per-route interval coverage.
+    """
     train_df = df[df["date"] < fold["train_end"]].dropna(subset=features + [TARGET])
     val_df = df[
         (df["date"] >= fold["train_end"]) & (df["date"] < fold["val_end"])
@@ -121,7 +124,7 @@ def evaluate_fold(df, features, params, fold):
         y[severe], sorted_preds[severe], alphas=QUANTILE_ALPHAS
     )
 
-    return {
+    result = {
         "mae": overall["mae"],
         "rmse": overall["rmse"],
         "severe_mae": severe_point["mae"],
@@ -131,6 +134,16 @@ def evaluate_fold(df, features, params, fold):
         "interval_width": quantile["interval_width"],
         "severe_coverage_80": severe_quantile["coverage_80"],
     }
+
+    if per_route:
+        routes = test_df["route"].values
+        in_interval = (y >= sorted_preds[:, 0]) & (y <= sorted_preds[:, -1])
+        result["per_route_coverage_80"] = {
+            route: round(float(in_interval[routes == route].mean() * 100), 2)
+            for route in np.unique(routes)
+        }
+
+    return result
 
 
 def summarize(fold_metrics):
@@ -143,10 +156,7 @@ def summarize(fold_metrics):
 
 
 def main():
-    df = pd.read_csv(DATA_PATH)
-    df["date"] = pd.to_datetime(df["date"])
-    df = add_allinbound_hub(df)
-
+    raw_df = load_raw()
     params = load_params()
 
     feature_sets = {
@@ -165,24 +175,56 @@ def main():
             "all sets share the params tuned on the full feature set; "
             "full_allinbound_hub is backtest-only and not servable live"
         ),
+        "methodology": "feature statistics rebuilt per fold at each fold's train_end",
         "n_folds": len(WALK_FORWARD_FOLDS),
         "sets": {},
     }
 
-    for name, features in feature_sets.items():
-        print(f"\n{name} ({len(features)} features)")
-        fold_metrics = []
-        for fold in WALK_FORWARD_FOLDS:
-            metrics = evaluate_fold(df, features, params, fold)
-            fold_metrics.append(metrics)
-            print(f"  fold to {fold['test_end']}: mae {metrics['mae']:.2f}, "
+    # folds are the outer loop so each fold frame is built once and shared
+    # by every feature set, the all-inbound hub join is pure shift/roll and
+    # carries no train-window statistics
+    set_fold_metrics = {name: [] for name in feature_sets}
+    for fold in WALK_FORWARD_FOLDS:
+        print(f"\nfold to {fold['test_end']}: building fold features...")
+        fold_df = add_allinbound_hub(build_fold_features(raw_df, fold["train_end"]))
+
+        for name, features in feature_sets.items():
+            # per-route coverage only for the served feature set, it feeds the
+            # decision on whether interval widening needs a per-route term
+            metrics = evaluate_fold(fold_df, features, params, fold, per_route=(name == "full"))
+            set_fold_metrics[name].append(metrics)
+            print(f"  {name}: mae {metrics['mae']:.2f}, "
                   f"severe mae {metrics['severe_mae']:.2f}")
 
-        results["sets"][name] = {
+    for name, features in feature_sets.items():
+        fold_metrics = set_fold_metrics[name]
+        per_route_folds = [m.pop("per_route_coverage_80", None) for m in fold_metrics]
+        entry = {
             "n_features": len(features),
             "folds": fold_metrics,
             "mean": summarize(fold_metrics),
         }
+
+        per_route_folds = [d for d in per_route_folds if d]
+        if per_route_folds:
+            routes = sorted(set().union(*per_route_folds))
+            per_route = {}
+            for route in routes:
+                values = [d[route] for d in per_route_folds if route in d]
+                per_route[route] = {
+                    "mean": round(float(np.mean(values)), 2),
+                    "min": round(float(np.min(values)), 2),
+                    "max": round(float(np.max(values)), 2),
+                    "n_folds": len(values),
+                }
+            entry["per_route_coverage_80"] = per_route
+
+            worst = sorted(per_route.items(), key=lambda kv: kv[1]["mean"])[:5]
+            print(f"\nworst-covered routes ({name} set, mean coverage_80 across folds):")
+            for route, stats in worst:
+                print(f"  {route}: {stats['mean']:.1f} (min {stats['min']:.1f})")
+
+        results["sets"][name] = entry
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_PATH, "w") as f:
@@ -190,7 +232,7 @@ def main():
     print(f"\nSaved to {OUTPUT_PATH}")
 
     # tracking runs after the results file is safe on disk, no-op without mlflow
-    provenance = tracking.provenance_tags(features_df=df, features_path=DATA_PATH)
+    provenance = tracking.provenance_tags(features_df=raw_df, features_path=RAW_PATH)
     with tracking.start_run(run_name="ablation", tags={"stage": "ablation", **provenance}):
         tracking.log_params({"n_folds": len(WALK_FORWARD_FOLDS), "sets": ",".join(feature_sets)})
         for name, entry in results["sets"].items():

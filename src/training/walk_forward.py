@@ -550,26 +550,34 @@ def main():
         mae = agg.get("mae", {})
         print(f"  {model_name:12s}: MAE {mae.get('mean', 'N/A')} +/- {mae.get('std', 'N/A')}")
 
-    # the methodology block is rewritten on every run so a mixed file can
-    # never masquerade as a homogeneous one
+    # provenance is stamped per model, not once at the top, so a subset run
+    # cannot relabel entries it did not recompute with the current methodology
+    provenance = tracking.provenance_tags(features_df=raw_df, features_path=RAW_PATH)
+    run_stamp = {
+        "feature_state": "rebuilt per fold at each fold's train_end",
+        "hpo_window": f"{HPO_TRAIN_END} to {HPO_VAL_END}",
+        "params": "configs/best_params_*.json",
+        "git_sha": provenance.get("git_sha", "unknown"),
+    }
+
     output = {
-        "methodology": {
-            "feature_state": "rebuilt per fold at each fold's train_end",
-            "hpo_window": f"{HPO_TRAIN_END} to {HPO_VAL_END}",
-            "params": "configs/best_params_*.json",
-        },
         "n_folds": len(WALK_FORWARD_FOLDS),
         "folds": WALK_FORWARD_FOLDS,
         "models": {},
+        "runs": {},
     }
 
     # a subset run must extend the published results, not clobber them
     output_path = OUTPUTS_DIR / "walk_forward_results.json"
     if output_path.exists():
         with open(output_path) as f:
-            output["models"] = json.load(f).get("models", {})
+            prior = json.load(f)
+        output["models"] = prior.get("models", {})
+        output["runs"] = prior.get("runs", {})
 
     output["models"].update(summary)
+    for model_name in summary:
+        output["runs"][model_name] = run_stamp
 
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2)
@@ -578,7 +586,6 @@ def main():
 
     # tracking runs last so a store failure can never cost the results file,
     # one parent run per model with a nested run per fold, no-op without mlflow
-    provenance = tracking.provenance_tags(features_df=raw_df, features_path=RAW_PATH)
     for model_name, fold_metrics in results.items():
         with tracking.start_run(
             run_name=f"walk_forward_{model_name}", tags={"stage": "walk_forward", **provenance}

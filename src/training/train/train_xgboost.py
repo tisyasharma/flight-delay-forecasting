@@ -62,11 +62,14 @@ def main():
 
     train_df = df[df["date"] < TRAIN_END].dropna(subset=available_features + [target_col])
     val_df = df[(df["date"] >= TRAIN_END) & (df["date"] < VAL_END)].dropna(subset=available_features + [target_col])
-    # the dev-test window stops before the locked final holdout, which is
-    # evaluated exactly once at release behind --final-test
+
+    # the historical devtest and locked-final-test spans predate the serving
+    # generation's train_end, so they are in-sample now and skipped; the live
+    # public record is this generation's blind test
+    holdouts_valid = pd.Timestamp(TEST_START) >= pd.Timestamp(TRAIN_END)
     devtest_df = df[
         (df["date"] >= TEST_START) & (df["date"] < FINAL_TEST_START)
-    ].dropna(subset=available_features + [target_col])
+    ].dropna(subset=available_features + [target_col]) if holdouts_valid else df.iloc[:0]
 
     X_train = train_df[available_features].values
     y_train = train_df[target_col].values
@@ -94,18 +97,20 @@ def main():
     print(f"Best iteration: {model.best_iteration}")
 
     val_metrics = calculate_delay_metrics(y_val, model.predict(X_val))
-    devtest_metrics = calculate_delay_metrics(y_devtest, model.predict(X_devtest))
-
     print(f"\nVal MAE: {val_metrics['mae']:.2f} min  RMSE: {val_metrics['rmse']:.2f} min")
-    print(f"Devtest MAE: {devtest_metrics['mae']:.2f} min")
-    print(f"Devtest RMSE: {devtest_metrics['rmse']:.2f} min")
-    print(f"Devtest R2: {devtest_metrics['r2']:.3f}")
-    print(f"Devtest within 15min: {devtest_metrics['within_15']:.1f}%")
-
     metrics = {f"val_{k}": v for k, v in val_metrics.items()}
-    metrics.update({f"devtest_{k}": v for k, v in devtest_metrics.items()})
 
-    if args.final_test:
+    if holdouts_valid:
+        devtest_metrics = calculate_delay_metrics(y_devtest, model.predict(X_devtest))
+        print(f"Devtest MAE: {devtest_metrics['mae']:.2f} min")
+        print(f"Devtest RMSE: {devtest_metrics['rmse']:.2f} min")
+        print(f"Devtest R2: {devtest_metrics['r2']:.3f}")
+        print(f"Devtest within 15min: {devtest_metrics['within_15']:.1f}%")
+        metrics.update({f"devtest_{k}": v for k, v in devtest_metrics.items()})
+    else:
+        print("historical devtest/final-test spans are inside the training window, skipping")
+
+    if args.final_test and holdouts_valid:
         final_df = df[df["date"] >= FINAL_TEST_START].dropna(subset=available_features + [target_col])
         final_metrics = calculate_delay_metrics(
             final_df[target_col].values, model.predict(final_df[available_features].values)

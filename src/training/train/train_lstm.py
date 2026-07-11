@@ -77,7 +77,13 @@ def main():
     val_mask = (df_clean["date"] >= TRAIN_END) & (df_clean["date"] < VAL_END)
     devtest_mask = (df_clean["date"] >= VAL_END) & (df_clean["date"] < FINAL_TEST_START)
 
+    # the historical devtest and locked-final-test spans predate the serving
+    # generation's train_end, so they are in-sample now and skipped
+    holdouts_valid = pd.Timestamp(FINAL_TEST_START) > pd.Timestamp(VAL_END)
+
     print(f"train={train_mask.sum():,}  val={val_mask.sum():,}  devtest={devtest_mask.sum():,}")
+    if not holdouts_valid:
+        print("historical devtest/final-test spans are inside the training window, skipping")
 
     scaler = StandardScaler()
     scaler.fit(df_clean.loc[train_mask, available_features].values)
@@ -97,11 +103,14 @@ def main():
         start_date=TRAIN_END, end_date=VAL_END,
         sequence_length=SEQUENCE_LENGTH, target_scaler=target_scaler
     )
-    test_X, test_y = create_sequences_by_date(
-        df_clean, available_features, target_col, scaler,
-        start_date=VAL_END, end_date=FINAL_TEST_START,
-        sequence_length=SEQUENCE_LENGTH, target_scaler=target_scaler
-    )
+    if holdouts_valid:
+        test_X, test_y = create_sequences_by_date(
+            df_clean, available_features, target_col, scaler,
+            start_date=VAL_END, end_date=FINAL_TEST_START,
+            sequence_length=SEQUENCE_LENGTH, target_scaler=target_scaler
+        )
+    else:
+        test_X, test_y = train_X[:0], train_y[:0]
 
     print(f"sequences: train={len(train_X):,}  val={len(val_X):,}  devtest={len(test_X):,}")
 
@@ -147,15 +156,18 @@ def main():
 
     print(f"\n{len(history['train_loss'])} epochs, best val loss: {min(history['val_loss']):.4f}")
 
-    actuals, preds = evaluate_model(model, test_loader, device, target_scaler=target_scaler)
-    metrics = calculate_delay_metrics(actuals, preds)
+    if holdouts_valid:
+        actuals, preds = evaluate_model(model, test_loader, device, target_scaler=target_scaler)
+        metrics = calculate_delay_metrics(actuals, preds)
 
-    print(f"Devtest MAE: {metrics['mae']:.2f} min")
-    print(f"Devtest RMSE: {metrics['rmse']:.2f} min")
-    print(f"Devtest R2: {metrics['r2']:.3f}")
-    print(f"Devtest within 15min: {metrics['within_15']:.1f}%")
+        print(f"Devtest MAE: {metrics['mae']:.2f} min")
+        print(f"Devtest RMSE: {metrics['rmse']:.2f} min")
+        print(f"Devtest R2: {metrics['r2']:.3f}")
+        print(f"Devtest within 15min: {metrics['within_15']:.1f}%")
 
-    if args.final_test:
+    if args.final_test and not holdouts_valid:
+        print("final test span already consumed by the previous generation, skipping")
+    if args.final_test and holdouts_valid:
         final_X, final_y = create_sequences_by_date(
             df_clean, available_features, target_col, scaler,
             start_date=FINAL_TEST_START, end_date=TEST_END,

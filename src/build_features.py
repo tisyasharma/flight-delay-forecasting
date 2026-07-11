@@ -5,7 +5,7 @@ import holidays
 import numpy as np
 import pandas as pd
 
-from src.config import COVID_START, COVID_PEAK_END, COVID_RECOVERY_END
+from src.config import COVID_START, COVID_PEAK_END, COVID_RECOVERY_END, TRAIN_END
 
 PROJECT_ROOT = Path(__file__).parent.parent
 PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
@@ -68,9 +68,11 @@ class FeatureBuilder:
         return self
 
     def add_holiday_features(self):
-        self.df["is_federal_holiday"] = self.df["date"].isin(self.us_holidays).astype(int)
-
+        # membership against a DatetimeIndex, not the raw holiday dict: isin
+        # with castable non-datetime values is deprecated and silently zeroed
+        # this flag once under a newer pandas
         holiday_dates = pd.DatetimeIndex(sorted(self.us_holidays.keys()))
+        self.df["is_federal_holiday"] = self.df["date"].isin(holiday_dates).astype(int)
         unique_dates = self.df["date"].unique()
 
         days_to = {}
@@ -433,6 +435,6 @@ def build_features(input_path=None, output_path=None, train_end_date="2024-01-01
 
 if __name__ == "__main__":
     build_features(
-        train_end_date="2024-01-01",
+        train_end_date=TRAIN_END,
         state_path=PROCESSED_DATA_DIR / "feature_state.json",
     )

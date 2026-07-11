@@ -36,6 +36,7 @@ env/
 # Generated outputs, evaluation evidence stays tracked
 outputs/*
 !outputs/ablation.json
+!outputs/recursive_eval.json
 !outputs/walk_forward_results.json
 
 # Frontend

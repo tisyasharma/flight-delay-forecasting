@@ -1,4 +1,4 @@
-.PHONY: setup features data-checks train train-quantile walk-forward ablation forecast test lint mlflow-ui backup-docs
+.PHONY: setup features data-checks train train-quantile walk-forward ablation recursive-eval forecast test lint mlflow-ui backup-docs
 
 # the project venv is the supported interpreter, a conda python on PATH
 # shadows it with incompatible pytest and torch versions
@@ -27,6 +27,9 @@ walk-forward:
 
 ablation:
 	$(PYTHON) -m src.training.ablation
+
+recursive-eval:
+	$(PYTHON) -m src.forecasting.recursive_eval
 
 forecast:
 	$(PYTHON) -m src.training.generate_forecasts

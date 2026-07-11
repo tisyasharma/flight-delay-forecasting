@@ -1,7 +1,8 @@
 """
-Generates the calibration figures the README leads with: interval coverage
-before and after conformal calibration, and a reliability curve for the
-bad-delay-day classifier. Run with `python -m src.evaluation.plots`.
+Generates the figures the README leads with: interval coverage before and
+after conformal calibration, a reliability curve for the bad-delay-day
+classifier, and the recursion-depth degradation curves from the forward
+backtest. Run with `python -m src.evaluation.plots`.
 """
 
 import json
@@ -19,6 +20,7 @@ from src.training.walk_forward import load_params
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 IMAGES_DIR = PROJECT_ROOT / "images"
 RESULTS_PATH = PROJECT_ROOT / "outputs" / "walk_forward_results.json"
+RECURSIVE_PATH = PROJECT_ROOT / "outputs" / "recursive_eval.json"
 TARGET = "avg_arr_delay"
 DELAY_THRESHOLD = 15
 
@@ -80,5 +82,48 @@ def plot_calibration():
     print(f"wrote {out}")
 
 
+def plot_recursive_degradation():
+    """
+    How accuracy and coverage decay as the model consumes its own predicted
+    lags. Softer-than-backtest numbers here are expected and are the honest
+    answer to what forward forecasting actually costs.
+    """
+    IMAGES_DIR.mkdir(exist_ok=True)
+    results = json.loads(RECURSIVE_PATH.read_text())
+    pooled = {int(k): v for k, v in results["all_folds_raw"].items()}
+    val_cal = {int(k): v for k, v in results["validation_fold4_calibrated"].items()}
+    val_raw = {int(k): v for k, v in results["validation_fold4_raw"].items()}
+    ks = sorted(pooled)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.2))
+
+    ax1.plot(ks, [pooled[k]["mae"] for k in ks], "o-", color="#36c", ms=3,
+             label="recursive q50 forecast")
+    ax1.plot(ks, [pooled[k]["persistence_mae"] for k in ks], "s-", color="#c44", ms=3,
+             label="persistence (last actual carried forward)")
+    ax1.set_xlabel("recursion depth k (days past the last actual)")
+    ax1.set_ylabel("MAE (minutes)")
+    ax1.set_title("Forward accuracy decays gracefully with depth")
+    ax1.legend(fontsize=8)
+
+    vks = sorted(val_cal)
+    ax2.plot(vks, [val_raw[k]["coverage_80"] for k in vks], "s-", color="#c44", ms=3,
+             label="raw quantiles")
+    ax2.plot(vks, [val_cal[k]["coverage_80"] for k in vks], "o-", color="#4a7", ms=3,
+             label="per-horizon conformal")
+    ax2.axhline(80, ls="--", color="#333", lw=1, label="nominal 80%")
+    ax2.set_xlabel("recursion depth k (days past the last actual)")
+    ax2.set_ylabel("empirical coverage of the 80% interval (%)")
+    ax2.set_title("Coverage by depth (fold-4 validation)")
+    ax2.legend(fontsize=8)
+
+    fig.tight_layout()
+    out = IMAGES_DIR / "recursive_degradation.png"
+    fig.savefig(out, dpi=130)
+    print(f"wrote {out}")
+
+
 if __name__ == "__main__":
     plot_calibration()
+    if RECURSIVE_PATH.exists():
+        plot_recursive_degradation()

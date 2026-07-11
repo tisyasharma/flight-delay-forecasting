@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -65,6 +66,19 @@ def clean_data(df):
     df["route"] = df["ORIGIN"] + "-" + df["DEST"]
 
     return df
+
+
+def load_frozen_routes():
+    """
+    The route set pinned by the training feature state, if one exists. The
+    modeled set is frozen: route_encoded and every route-level statistic are
+    keyed to it, so a rank shift in new months must never change the set.
+    """
+    state_path = PROCESSED_DATA_DIR / "feature_state.json"
+    if not state_path.exists():
+        return None
+    with open(state_path) as f:
+        return sorted(json.load(f)["route_codes"])
 
 
 def identify_top_routes(df, n=20):
@@ -296,6 +310,15 @@ def process_all():
     df = load_raw_data()
     df = clean_data(df)
     top_routes = identify_top_routes(df, n=50)
+
+    frozen = load_frozen_routes()
+    if frozen is not None:
+        drift = sorted(set(frozen) ^ set(top_routes))
+        if drift:
+            print(f"Route ranking drifted on {len(drift)} routes vs the frozen set "
+                  f"({', '.join(drift[:6])}{'...' if len(drift) > 6 else ''}); "
+                  "keeping the frozen set")
+        top_routes = frozen
 
     route_airports = sorted({a for route in top_routes for a in route.split("-")})
     hub = aggregate_inbound_by_destination(df, route_airports)

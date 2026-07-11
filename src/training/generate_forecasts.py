@@ -13,12 +13,20 @@ from src.models.tcn import RouteDelayTCN
 from src.models.device import get_device
 from src.evaluation.metrics import calculate_delay_metrics
 from src.config import (
-    TRAIN_END, TEST_START, TEST_END, SEQUENCE_LENGTH,
+    SEQUENCE_LENGTH,
     SEQUENCE_MODEL_FEATURES,
 )
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
+
+# the study dashboard documents the 2024-cutoff evaluation artifacts; its
+# dates are pinned, and main() refuses to run against artifacts built at a
+# different cutoff so a re-run can never silently overwrite the published
+# study with in-sample numbers
+TRAIN_END = "2024-01-01"
+TEST_START = "2024-07-01"
+TEST_END = "2025-06-30"
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -254,6 +262,17 @@ def get_top_display_routes(df, n=DISPLAY_ROUTES):
 
 def main():
     """Loads all models, generates predictions, computes metrics, saves JSON."""
+    state_path = DATA_DIR / "feature_state.json"
+    if state_path.exists():
+        with open(state_path) as f:
+            current_cutoff = json.load(f).get("train_end_date")
+        if current_cutoff != TRAIN_END:
+            raise SystemExit(
+                f"feature table is built at cutoff {current_cutoff}, but the study "
+                f"dashboard is pinned to {TRAIN_END}; rebuild features and models at "
+                "the pinned cutoff before regenerating the published study artifacts"
+            )
+
     print("generating forecast JSON...")
 
     df = load_data()

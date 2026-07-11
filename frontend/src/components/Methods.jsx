@@ -11,7 +11,7 @@ function Methods() {
     },
     {
       number: '2',
-      content: 'Feature engineering mattered more than model architecture. In ablation testing, adding weather features reduced XGBoost MAE by 10.3%. Notably, gradient boosting without weather data still outperformed deep learning trained on the full feature set. Within each model family, performance differences were negligible, suggesting similar algorithmic ceilings rather than tuning limitations.'
+      content: 'Feature engineering mattered more than model architecture. In ablation testing, adding weather features reduced XGBoost MAE by 10.3%. Notably, gradient boosting without weather data still outperformed deep learning trained on its complete sequence feature set. Within each model family, performance differences were negligible, suggesting similar algorithmic ceilings rather than tuning limitations.'
     },
     {
       number: '3',

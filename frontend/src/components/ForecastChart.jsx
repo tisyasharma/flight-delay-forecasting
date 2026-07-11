@@ -384,7 +384,7 @@ function ForecastChart({ forecastData, loading, error }) {
             html += `<div>Error: ${err >= 0 ? '+' : ''}${err.toFixed(1)} min</div>`
           }
         }
-        html += `<div style="color: var(--text-muted); font-size: 11px;">${d.isTest ? 'Test Period' : 'Training Period'}</div>`
+        html += `<div style="color: var(--text-muted); font-size: 11px;">${d.isTest ? 'Test Period' : 'Train/Validation Period'}</div>`
         showTooltip(event, html, { bounds: container })
       })
       .on('mouseleave', () => {
@@ -700,7 +700,7 @@ function ForecastChart({ forecastData, loading, error }) {
                 </div>
                 <div className="legend-item">
                   <svg width="20" height="10"><line x1="10" y1="0" x2="10" y2="10" stroke="var(--red)" strokeWidth="2" strokeDasharray="3,2"/></svg>
-                  <span>Train/Test Split</span>
+                  <span>Test Period Start</span>
                 </div>
               </div>
             </div>

@@ -294,7 +294,7 @@ function CarrierPerformance() {
           <div className="carrier-layout__sidebar">
             <div className="finding-card">
               <h4>Top Performers</h4>
-              <p>Delta Air Lines and Hawaiian Airlines rank highest in on-time arrival performance, each exceeding 85% on-time, with the lowest average delays among major carriers.</p>
+              <p>Delta Air Lines and Hawaiian Airlines rank highest in on-time arrival performance at 85.4% and 84.9%, while Delta and Alaska post the lowest average delays among major carriers.</p>
             </div>
             <div className="finding-card">
               <h4>Operational Scale</h4>

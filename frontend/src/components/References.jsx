@@ -15,7 +15,7 @@ function References() {
           <li id="ref-2">
             Bureau of Transportation Statistics, "Airline On-Time Performance Data" (U.S. Department of
             Transportation, 2019-2025),{' '}
-            <a href="https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoession_VQ=FGK" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.transtats.bts.gov/" target="_blank" rel="noopener noreferrer">
               https://www.transtats.bts.gov/
             </a>
             .

@@ -11,7 +11,9 @@ function formatUnit(key) {
 }
 
 function getQuarter(dateStr) {
-  const month = new Date(dateStr).getMonth()
+  // bare dates parse as UTC midnight, local getMonth() would shift
+  // first-of-month days into the prior season for viewers west of UTC
+  const month = new Date(dateStr).getUTCMonth()
   if (month < 3) return 'Winter'
   if (month < 6) return 'Spring'
   if (month < 9) return 'Summer'
@@ -835,7 +837,7 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
           <div className="findings-grid findings-grid--3">
             <div className="finding-card finding-card--blue">
               <h4>Consistent Advantage</h4>
-              <p>Gradient boosting outperforms deep learning on every route in the test set, with an average margin of 1.49 minutes MAE. The advantage holds regardless of route characteristics.</p>
+              <p>Gradient boosting outperforms deep learning on every route in the test set, with an average margin of 1.7 minutes MAE. The advantage holds regardless of route characteristics.</p>
             </div>
             <div className="finding-card finding-card--cyan">
               <h4>Largest Gaps</h4>
@@ -843,7 +845,7 @@ function ErrorAnalysis({ forecastData: rawData, loading, error }) {
             </div>
             <div className="finding-card finding-card--green">
               <h4>Smallest Gaps</h4>
-              <p>Hawaii routes (OGG-HNL, HNL-OGG) show the smallest gaps at under 0.5 minutes. With stable weather and predictable delays, both model types perform similarly well.</p>
+              <p>LAX-JFK, ATL-MCO, and the OGG-HNL island hop show the smallest gaps at 1.0 to 1.2 minutes. On these steadier corridors both model families land close together.</p>
             </div>
           </div>
         )}

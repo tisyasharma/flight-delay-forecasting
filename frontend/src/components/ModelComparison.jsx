@@ -197,7 +197,7 @@ function ModelComparison({ forecastData, loading, error }) {
           </div>
           <div className="finding-card finding-card--orange">
             <h4>Why Features Matter</h4>
-            <p>In ablation testing, gradient boosting without weather features still outperformed deep learning with the full feature set (12.69 min MAE). Weather features alone accounted for a 10.3% improvement in XGBoost performance.</p>
+            <p>In ablation testing, gradient boosting without weather features still outperformed deep learning trained on its complete sequence feature set (12.69 min MAE). Weather features alone accounted for a 10.3% improvement in XGBoost performance.</p>
           </div>
         </div>
       </div>

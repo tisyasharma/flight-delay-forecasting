@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 
 const NAV_SECTIONS = [
   { id: 'weather-impact', label: 'Weather' },
@@ -13,8 +14,11 @@ const NAV_SECTIONS = [
 function Navigation() {
   const [activeSection, setActiveSection] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const { pathname } = useLocation()
+  const onStudy = pathname.startsWith('/study') || pathname.startsWith('/forecasting')
 
   useEffect(() => {
+    if (!onStudy) return undefined
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
@@ -34,7 +38,7 @@ function Navigation() {
     })
 
     return () => observer.disconnect()
-  }, [])
+  }, [onStudy])
 
   const handleClick = (e, id) => {
     e.preventDefault()
@@ -50,17 +54,16 @@ function Navigation() {
   return (
     <nav className="nav">
       <div className="nav__inner">
-        <a
-          href="#"
+        <Link
+          to="/"
           className="brand"
-          onClick={(e) => {
-            e.preventDefault()
+          onClick={() => {
             setMenuOpen(false)
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
         >
           Route Delay Forecasting
-        </a>
+        </Link>
         <button
           className={`nav__toggle ${menuOpen ? 'nav__toggle--open' : ''}`}
           onClick={() => setMenuOpen(!menuOpen)}
@@ -72,7 +75,21 @@ function Navigation() {
           <span></span>
         </button>
         <div className={`nav__links ${menuOpen ? 'nav__links--open' : ''}`}>
-          {NAV_SECTIONS.map(({ id, label }) => (
+          <Link
+            to="/"
+            className={!onStudy ? 'nav__link--active' : ''}
+            onClick={() => setMenuOpen(false)}
+          >
+            Live
+          </Link>
+          <Link
+            to="/study"
+            className={onStudy && !activeSection ? 'nav__link--active' : ''}
+            onClick={() => setMenuOpen(false)}
+          >
+            Study
+          </Link>
+          {onStudy && NAV_SECTIONS.map(({ id, label }) => (
             <a
               key={id}
               href={`#${id}`}

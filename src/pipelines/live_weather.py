@@ -1,7 +1,7 @@
 """
 Weather assembly for live forecasting: covers every day from the last BTS
 actual through the forecast horizon by stitching three sources in order of
-preference — the era5 archive and the gfs_seamless historical-forecast
+preference: the era5 archive and the gfs_seamless historical-forecast
 archive for settled days (each lags realtime by a few days), and the live
 forecast API for the recent seam and the future. The live API is pinned to
 models=gfs_seamless and serves the training variables under identical names,
@@ -130,7 +130,7 @@ def fetch_archive_frames(airport_code, coords, start, end):
     """
     Settled-history frames from the archive sources for one airport: era5
     daily+hourly merged, and gfs_seamless aviation aggregates. Days past the
-    archives' recency lag come back NaN and are dropped here; the live API
+    archives' recency lag come back NaN and are dropped here, the live API
     covers them.
     """
     tz = coords.get("tz", "America/New_York")
@@ -157,7 +157,7 @@ def build_weather_span(start, end, airports=None, sleep_s=1.5):
     airports = airports or AIRPORT_COORDS
     start_ts, end_ts = pd.Timestamp(start), pd.Timestamp(end)
     today = pd.Timestamp.utcnow().tz_localize(None).normalize()
-    # forecast_days counts from each airport's LOCAL today; at the 09:30 UTC
+    # forecast_days counts from each airport's LOCAL today, and at the 09:30 UTC
     # cron, Hawaii is still on the previous local date, so a horizon computed
     # from the UTC date needs a day of slack or the last day comes back
     # missing there and the coverage check aborts every scheduled run

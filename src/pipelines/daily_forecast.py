@@ -3,17 +3,17 @@ The daily live forecast: rolls the recursive engine from the last published
 BTS actual through seven days past today and publishes the result for the
 dashboard, plus an append-only prediction log that can be graded against
 actuals as BTS publishes them. Every day between the last actual and the
-horizon is a genuine forward forecast — the model consuming its own predicted
-lags — which is exactly the honesty the recursion-depth backtest quantified.
+horizon is a genuine forward forecast, the model consuming its own predicted
+lags, which is exactly the behavior the recursion-depth backtest quantified.
 
 Failure policy: any uncovered airport-day or fetch failure aborts the run
-with no output written; the dashboard keeps yesterday's file and shows its
-staleness banner. Stale but honest beats fresh but wrong.
+with no output written. The dashboard keeps yesterday's file and shows its
+staleness banner: stale and correct beats fresh and wrong.
 """
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import lightgbm as lgb
@@ -23,8 +23,8 @@ import pandas as pd
 from src.build_features import FeatureBuilder
 from src.features.registry import TABULAR_FEATURES
 from src.forecasting.recursive import RecursiveForecaster
-from src.process import merge_aviation_data, merge_weather_data
 from src.pipelines.live_weather import build_weather_span
+from src.process import merge_aviation_data, merge_weather_data
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DEMAND_PATH = PROJECT_ROOT / "data" / "processed" / "daily_route_demand.csv"
@@ -38,11 +38,15 @@ TRAILING_DAYS = 130
 HORIZON_DAYS_PAST_TODAY = 7
 QUANTILE_ALPHAS = (0.1, 0.5, 0.9)
 
+# weeks of observed history shipped with the payload so the dashboard can
+# anchor the forecast against the actual series it continues from
+PAYLOAD_ACTUAL_DAYS = 56
+
 
 def validate_offsets(offsets, floor):
     """
     The applied widening is the per-horizon offsets from the recursion
-    backtest — a protocol-level estimate from different model instances — and
+    backtest, a protocol-level estimate from different model instances, and
     conformal.json carries the serving generation's own one-step base offset.
     The per-horizon offsets must dominate that base at every depth, or the
     applied intervals would be narrower than this generation's own one-step
@@ -144,6 +148,21 @@ def build_live_frame(demand, state, last_actual, horizon_end):
     return builder.build()
 
 
+def serialize_forecast_row(row):
+    """
+    One forecast row as it appears in both the dashboard payload and the
+    append-only log, so the graded record and the displayed numbers derive
+    from a single place and cannot drift apart.
+    """
+    return {
+        "date": str(row["date"].date()),
+        "k": int(row["k"]),
+        "q50": round(float(row["q50"]), 2),
+        "lo": round(float(row["lo_cal"]), 2),
+        "hi": round(float(row["hi_cal"]), 2),
+    }
+
+
 def main():
     demand = pd.read_csv(DEMAND_PATH, parse_dates=["date"])
     models, state, offsets, conformal_base = load_serving_artifacts()
@@ -171,21 +190,43 @@ def main():
     forecaster = RecursiveForecaster(models, state)
     out = forecaster.forecast(frame, last_actual, n_days, conformal_offset=offsets)
 
-    generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    # verification overlay: the last published month replayed from the prior
+    # month's end, same engine and offsets. delay features roll from the
+    # model's own predictions as in live serving, but weather stays archival,
+    # so this bounds recursion cost rather than reproducing serving conditions.
+    # purely retrospective and never logged, the prediction log stays vintages-only
+    ver_origin = last_actual.replace(day=1) - pd.Timedelta(days=1)
+    ver_days = int((last_actual - ver_origin).days)
+    verification = forecaster.forecast(
+        frame, ver_origin, ver_days, conformal_offset=offsets)
+
+    generated_at = datetime.now(UTC).isoformat(timespec="seconds")
     model_version = os.environ.get("GITHUB_SHA", "local")[:12]
 
-    routes_payload = {}
-    for route, g in out.groupby("route"):
-        routes_payload[route] = [
-            {
-                "date": str(row["date"].date()),
-                "k": int(row["k"]),
-                "q50": round(float(row["q50"]), 2),
-                "lo": round(float(row["lo_cal"]), 2),
-                "hi": round(float(row["hi_cal"]), 2),
-            }
+    history = demand[
+        demand["date"] > last_actual - pd.Timedelta(days=PAYLOAD_ACTUAL_DAYS)
+    ].sort_values("date")
+    actuals_by_route = {
+        route: [
+            {"date": str(row["date"].date()), "actual": round(float(row["avg_arr_delay"]), 2)}
             for _, row in g.iterrows()
         ]
+        for route, g in history.groupby("route")
+    }
+
+    def forecast_rows(g):
+        return [serialize_forecast_row(row) for _, row in g.iterrows()]
+
+    verification_by_route = {
+        route: forecast_rows(g) for route, g in verification.groupby("route")
+    }
+    routes_payload = {}
+    for route, g in out.groupby("route"):
+        routes_payload[route] = {
+            "actuals": actuals_by_route.get(route, []),
+            "forecast": forecast_rows(g),
+            "verification": verification_by_route.get(route, []),
+        }
 
     trained_through = str(
         (pd.Timestamp(state["train_end_date"]) - pd.Timedelta(days=1)).date())
@@ -196,6 +237,7 @@ def main():
         "last_actual_date": str(last_actual.date()),
         "today": str(today.date()),
         "horizon_end": str(horizon_end.date()),
+        "verification_origin": str(ver_origin.date()),
         "interval": ("80% target; per-horizon widening from the recursion backtest, "
                      f"base offset {conformal_base['offset']:.2f} from the serving "
                      "generation's calibration split"),
@@ -209,7 +251,7 @@ def main():
           f"({OUTPUT_PATH.stat().st_size // 1024} KB)")
 
     # each day's run logs one vintage of its published 7-day horizon
-    # (today..today+7); earlier vintages are never rewritten
+    # (today..today+7), earlier vintages are never rewritten
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     future = out[out["date"] >= today]
     with open(log_path, "a") as f:
@@ -218,11 +260,7 @@ def main():
                 "generated_at": generated_at,
                 "model_version": model_version,
                 "route": row["route"],
-                "date": str(row["date"].date()),
-                "k": int(row["k"]),
-                "q50": round(float(row["q50"]), 2),
-                "lo": round(float(row["lo_cal"]), 2),
-                "hi": round(float(row["hi_cal"]), 2),
+                **serialize_forecast_row(row),
             }) + "\n")
     print(f"logged {len(future)} forecasts to {log_path.relative_to(PROJECT_ROOT)}")
 

@@ -11,7 +11,7 @@ function Methods() {
     },
     {
       number: '2',
-      content: 'Feature engineering mattered more than model architecture. In ablation testing, adding weather features reduced XGBoost MAE by 10.3%. Notably, gradient boosting without weather data still outperformed deep learning trained on its complete sequence feature set. Within each model family, performance differences were negligible, suggesting similar algorithmic ceilings rather than tuning limitations.'
+      content: 'Feature engineering mattered more than model architecture. In ablation testing, adding weather features reduced XGBoost MAE by 10.3%. Gradient boosting without weather data still outperformed deep learning trained on its complete sequence feature set. Within each model family, performance differences were negligible, suggesting similar algorithmic ceilings rather than tuning limitations.'
     },
     {
       number: '3',
@@ -34,7 +34,7 @@ function Methods() {
     },
     {
       title: 'Forecasting Models',
-      content: 'All models are trained as single global regressors on pooled route data, with route identity encoded as features rather than training separate per-route models. Baselines include naive lag-1 and seven-day moving average forecasts. We compare gradient boosting models (XGBoost and LightGBM) against deep learning approaches (LSTM with attention and TCN) to assess whether neural architectures provide an advantage over feature-based methods in this setting.'
+      content: 'All models are trained as single global regressors on pooled route data, with route identity encoded as features rather than training separate per-route models. Baselines include naive lag-1 and seven-day moving average forecasts. The study compares gradient boosting models (XGBoost and LightGBM) against deep learning approaches (LSTM with attention and TCN) to assess whether neural architectures provide an advantage over feature-based methods in this setting.'
     },
     {
       title: 'Weather Integration',

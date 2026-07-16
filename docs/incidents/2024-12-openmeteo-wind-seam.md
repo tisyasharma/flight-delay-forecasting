@@ -7,10 +7,15 @@
 ## Symptom
 
 A month-matched population stability index (PSI) sweep over the weather
-features flagged `max_wind` at 0.78 against its 2019-2024 reference — far past
-the 0.25 major-drift threshold — while every other weather feature scored
+features flagged `max_wind` at 0.78 against its 2019-2024 reference, far past
+the 0.25 major-drift threshold, while every other weather feature scored
 below 0.05. Wind gusts stayed flat over the same window, which ruled out an
 actual change in the weather.
+
+The 19-month gap between the seam and its detection is itself part of the
+record: no drift monitoring existed before this audit, which was being built
+as the project's data-quality gates. This incident is why the month-matched
+PSI check now runs on every rebuild instead of on demand.
 
 ## Diagnosis
 
@@ -43,12 +48,19 @@ mixed two different wind climatologies.
 - After the rebuild, the worst monthly deviation from same-month history in
   the affected window is 10% with no systematic direction, and the
   month-matched PSI on `max_wind` is 0.01.
+- Audited every other Open-Meteo call site for the same anti-pattern. The
+  aviation fetch and the live forecast fetch pin `models=` explicitly
+  (`gfs_seamless`), so the class of bug is closed, not just this instance.
+- No serving model was live during the affected window, so the impact was
+  confined to offline experiment results, which were regenerated after the
+  rebuild. Rows added after the pin (2025-07 onward) were fetched as era5 from
+  the start, which is why the affected window ends at June 2025.
 
 ## Lessons
 
 - Pin every upstream model or dataset version explicitly. Defaults that
-  resolve to "best available" can change under you without any error or
-  header hinting at it.
+  resolve to "best available" can change underneath a pipeline without any
+  error or header hinting at it.
 - Month-matched references are essential for drift checks on seasonal
   features: against a naive full-history reference, temperature alone scores
   PSI 0.30 from seasonality, which would have buried this real signal in

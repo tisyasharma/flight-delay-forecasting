@@ -41,7 +41,7 @@ export const METRIC_CONFIG = {
     unit: 'min',
     color: '#FBBF24',
     tier: 2,
-    description: 'Median Absolute Error - robust to outliers'
+    description: 'Median Absolute Error, less sensitive to outliers'
   },
 }
 

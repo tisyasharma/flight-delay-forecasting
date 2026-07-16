@@ -63,7 +63,7 @@ function Forecasting() {
             <div className="data-source-divider" />
             <div className="data-source-item">
               <span className="data-source-label">Time Span</span>
-              <span className="data-source-value">January 2019 – June 2025</span>
+              <span className="data-source-value">January 2019 to June 2025</span>
             </div>
             <div className="data-source-divider" />
             <div className="data-source-item">

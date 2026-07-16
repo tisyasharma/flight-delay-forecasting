@@ -136,7 +136,7 @@ function ModelComparison({ forecastData, loading, error }) {
         <p className="kicker">Performance</p>
         <h2>Model Comparison</h2>
         <p style={{ marginBottom: 'var(--space-xl)' }}>
-          We evaluate four modeling approaches for next-day route-level delay forecasting using walk-forward validation (2023-2024). The comparison includes two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN). Performance is assessed using MAE and hit rate, defined as the share of daily forecasts within ±15 minutes of the observed delay. Metrics are aggregated across all 50 training routes.
+          Four modeling approaches are evaluated for next-day route-level delay forecasting using walk-forward validation (2023-2024). The comparison covers two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN). Performance is assessed using MAE and hit rate, defined as the share of daily forecasts within ±15 minutes of the observed delay. Metrics are aggregated across all 50 training routes.
         </p>
 
         <div className="viz-card model-comparison-card" style={{ height: 'auto', padding: 0 }}>

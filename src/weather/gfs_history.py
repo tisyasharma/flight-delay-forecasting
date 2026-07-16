@@ -15,8 +15,12 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from src.training.fetch_weather_data import AIRPORT_COORDS, DATE_END, DATE_START
-from src.weather.common import aggregate_aviation_hourly_to_daily
+from src.training.fetch_weather_data import (
+    AIRPORT_COORDS,
+    DATE_END,
+    extension_start,
+)
+from src.weather.common import aggregate_aviation_hourly_to_daily, drop_unsettled_tail
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 WEATHER_DIR = PROJECT_ROOT / "data" / "weather"
@@ -117,6 +121,7 @@ def fetch_airport_history(airport_code, coords, start_date, end_date):
         time.sleep(2)
 
     hourly = pd.concat(frames, ignore_index=True)
+    hourly = drop_unsettled_tail(hourly, ["weather_code", "visibility", "wind_speed"])
     return aggregate_aviation_hourly_to_daily(hourly)
 
 
@@ -130,26 +135,28 @@ def load_existing():
 
 
 def fetch_all_aviation_weather(resume=True):
-    """Fetches GFS aviation history for all airports, checkpointing after each."""
-    all_data = []
-    existing_airports = set()
+    """
+    Fetches or extends GFS aviation history for all airports, checkpointing
+    after each. Airports already current through DATE_END are skipped,
+    airports with older rows are extended from the day after their last date.
+    """
+    existing_df = load_existing() if resume else None
+    all_data = [existing_df] if existing_df is not None else []
 
-    if resume:
-        existing_df = load_existing()
-        if existing_df is not None:
-            existing_airports = set(existing_df["airport"].unique())
-            all_data.append(existing_df)
-            print(f"Found existing aviation data for {len(existing_airports)} airports")
+    plans = {a: extension_start(existing_df, a) for a in AIRPORT_COORDS}
+    current = [a for a, s in plans.items() if s is None]
+    print(f"Aviation: {len(plans) - len(current)} airports to fetch or extend, "
+          f"{len(current)} already current through {DATE_END}")
 
-    airports_to_fetch = {k: v for k, v in AIRPORT_COORDS.items() if k not in existing_airports}
-    print(f"Aviation: {len(airports_to_fetch)} airports to fetch, "
-          f"{len(existing_airports)} already done")
-
-    for airport, coords in airports_to_fetch.items():
-        print(f"{airport} ({coords['name']})...", end=" ")
+    failed = []
+    for airport, coords in AIRPORT_COORDS.items():
+        start = plans[airport]
+        if start is None:
+            continue
+        print(f"{airport} ({coords['name']}) from {start}...", end=" ")
 
         try:
-            daily = fetch_airport_history(airport, coords, DATE_START, DATE_END)
+            daily = fetch_airport_history(airport, coords, start, DATE_END)
             all_data.append(daily)
             print(f"{len(daily)} days")
 
@@ -160,12 +167,16 @@ def fetch_all_aviation_weather(resume=True):
 
         except Exception as e:
             print(f"FAILED: {e}")
+            failed.append(airport)
             continue
 
         time.sleep(3)
 
     if not all_data:
         raise RuntimeError("No aviation weather data fetched")
+    if failed:
+        raise RuntimeError(f"aviation weather fetch failed for {', '.join(failed)}, "
+                           "rerun to extend the remaining airports")
 
     combined = pd.concat(all_data, ignore_index=True)
     combined = combined.drop_duplicates(subset=["airport", "date"])

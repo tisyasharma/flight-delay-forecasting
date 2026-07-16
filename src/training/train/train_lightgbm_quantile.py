@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from src import tracking
-from src.config import TRAIN_END, VAL_END, TEST_START, FINAL_TEST_START, TABULAR_FEATURES
+from src.config import FINAL_TEST_START, TABULAR_FEATURES, TEST_START, TRAIN_END, VAL_END
 from src.evaluation.conformal import apply_cqr, cqr_offset, split_calibration_window
 from src.evaluation.metrics import (
     calculate_quantile_metrics,
@@ -16,7 +16,8 @@ from src.evaluation.metrics import (
     interval_width,
     sort_quantile_predictions,
 )
-from src.training.train.train_lightgbm import load_tuned_params
+from src.training.common import load_tuned_params
+from src.training.train.train_lightgbm import DEFAULT_PARAMS
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
@@ -29,10 +30,11 @@ QUANTILE_ALPHAS = (0.1, 0.5, 0.9)
 
 def export_point_model():
     """
-    Saves the published point model as a native text booster so serving can
-    load it without sklearn or joblib. The pickle stays the source of truth,
-    retraining here would silently detach the artifact from its published
-    metrics.
+    Saves the published point model as a native text booster so the release
+    ships one artifact set that can reproduce the point-model numbers. It is
+    not on the serving path, the daily forecast loads only the quantile
+    boosters. The pickle stays the source of truth, retraining here would
+    silently detach the artifact from its published metrics.
     """
     pkl_path = MODELS_DIR / "lightgbm_delay.pkl"
     if not pkl_path.exists():
@@ -72,7 +74,7 @@ def main():
     ].dropna(subset=available_features + [target_col])
 
     # the historical devtest and locked-final-test spans predate the serving
-    # generation's train_end, so they are in-sample now and skipped; the live
+    # generation's train_end, so they are in-sample now and skipped. the live
     # public record is this generation's blind test
     holdouts_valid = pd.Timestamp(TEST_START) >= pd.Timestamp(TRAIN_END)
     devtest_df = df[
@@ -99,7 +101,7 @@ def main():
     if not holdouts_valid:
         print("historical devtest/final-test spans are inside the training window, skipping")
 
-    base_params = load_tuned_params()
+    base_params = load_tuned_params("lightgbm", DEFAULT_PARAMS)
     base_params.update({
         "max_depth": -1,
         "random_state": 42,

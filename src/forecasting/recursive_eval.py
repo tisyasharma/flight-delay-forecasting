@@ -2,9 +2,9 @@
 Backtests the recursive engine under serving conditions: from a forecast
 origin, every delay lag beyond the origin comes from the model's own rolled
 predictions, exactly as it would live where BTS actuals arrive one to two
-months late. Walk-forward MAE answers "how good are one-step predictions
-with real lags"; this answers the harder, honest question of how accuracy
-and coverage decay with recursion depth.
+months late. Walk-forward MAE measures one-step accuracy with real lags.
+This backtest measures how accuracy and coverage decay with recursion
+depth.
 
 Per fold, quantile models are trained with the same discipline as the
 walk-forward harness (early stopping on the first half of the val window),

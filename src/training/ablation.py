@@ -8,7 +8,7 @@ to quantify what the serve-consistent hub feature leaves on the table.
 Metrics are reported overall and on severe-weather days separately, since
 squared error concentrates heavily on the severe tail. All sets share the
 same tuned hyperparameters, which mildly favors the full set they were tuned
-on; noted in the output.
+on, noted in the output.
 """
 
 import json

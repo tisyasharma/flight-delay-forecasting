@@ -1,18 +1,28 @@
-.PHONY: setup features data-checks train train-quantile walk-forward ablation recursive-eval forecast test lint mlflow-ui backup-docs
+.PHONY: setup features data-checks weather refresh train train-quantile walk-forward ablation recursive-eval forecast test lint mlflow-ui
 
 # the project venv is the supported interpreter, a conda python on PATH
 # shadows it with incompatible pytest and torch versions
 PYTHON ?= venv/bin/python
-BACKUP_DIR ?= $(HOME)/Backups/flight-delay-forecasting-docs
 
 setup:
-	$(PYTHON) -m pip install -e ".[dev,dl,track]"
+	python3 -m venv venv
+	$(PYTHON) -m pip install -e ".[dev,track]"
 
 features:
 	$(PYTHON) -m src.build_features
 	$(PYTHON) -m src.data_checks
 
 data-checks:
+	$(PYTHON) -m src.data_checks
+
+weather:
+	$(PYTHON) -m src.training.fetch_weather_data
+	$(PYTHON) -m src.weather.gfs_history
+
+# the monthly ritual: drop the new BTS month into data/raw/, then run this
+refresh: weather
+	$(PYTHON) -m src.process
+	$(PYTHON) -m src.build_features
 	$(PYTHON) -m src.data_checks
 
 train:
@@ -43,6 +53,3 @@ lint:
 mlflow-ui:
 	venv/bin/mlflow ui --backend-store-uri sqlite:///mlflow.db
 
-backup-docs:
-	mkdir -p $(BACKUP_DIR)
-	rsync -a docs/*.local.md $(BACKUP_DIR)/

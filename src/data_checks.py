@@ -88,7 +88,10 @@ def check_holiday_flags(df, min_per_year=9):
 
     missing = [y for y in complete_years if per_year.get(y, 0) < min_per_year]
     if missing:
-        return [f"complete years with fewer than {min_per_year} flagged federal holidays: {missing}"]
+        return [
+            f"complete years with fewer than {min_per_year} "
+            f"flagged federal holidays: {missing}"
+        ]
     return []
 
 
@@ -110,6 +113,31 @@ def check_wind_seam(df, months=SEAM_WINDOW_MONTHS, threshold=SEAM_PSI_THRESHOLD)
     return failures
 
 
+def check_weather_continuity(weather_dir=None):
+    """
+    Every weather table must cover every calendar day per airport between its
+    first and last date. The fetchers extend from each airport's max date, so
+    an interior hole would otherwise survive every later run silently.
+    """
+    weather_dir = weather_dir or (PROJECT_ROOT / "data" / "weather")
+    failures = []
+    for name in ("weather_daily", "weather_hourly_agg", "aviation_daily"):
+        path = weather_dir / f"{name}.csv"
+        if not path.exists():
+            failures.append(f"{name}.csv missing from {weather_dir}")
+            continue
+        wdf = pd.read_csv(path, usecols=["airport", "date"], parse_dates=["date"])
+        for airport, g in wdf.groupby("airport"):
+            expected = pd.date_range(g["date"].min(), g["date"].max(), freq="D")
+            missing = expected.difference(g["date"])
+            if len(missing):
+                failures.append(
+                    f"{name}: {airport} has {len(missing)} missing days, "
+                    f"first {missing[0].date()}"
+                )
+    return failures
+
+
 def main():
     df = pd.read_csv(FEATURES_PATH, parse_dates=["date"])
     raw_df = pd.read_csv(RAW_PATH, parse_dates=["date"])
@@ -123,6 +151,7 @@ def main():
         + check_raw_completeness(raw_df)
         + check_holiday_flags(df)
         + check_wind_seam(df)
+        + check_weather_continuity()
     )
 
     for message in failures:

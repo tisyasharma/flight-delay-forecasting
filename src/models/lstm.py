@@ -245,22 +245,3 @@ class LSTMTrainer:
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.history = checkpoint["history"]
-
-
-if __name__ == "__main__":
-    input_size = 22
-    batch_size = 16
-    seq_length = 28
-    x = torch.randn(batch_size, seq_length, input_size)
-
-    model_single = RouteDelayLSTM(input_size=input_size, hidden_size=64, num_layers=2)
-    output = model_single(x)
-    attn = model_single.get_attention_weights(x)
-    print(f"Single-head: input {x.shape}, output {output.shape}, attn {attn.shape}")
-
-    model_multi = RouteDelayLSTM(
-        input_size=input_size, hidden_size=64, num_layers=2, num_attention_heads=4
-    )
-    output = model_multi(x)
-    attn = model_multi.get_attention_weights(x)
-    print(f"Multi-head:  input {x.shape}, output {output.shape}, attn {attn.shape}")

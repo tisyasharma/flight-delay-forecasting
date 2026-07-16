@@ -45,7 +45,7 @@ FEATURE_GROUPS = {
         "peak_wind_operating", "precip_operating", "max_hourly_severity",
         "storm_hours", "morning_severity", "evening_severity",
     ],
-    # GFS-derived aviation weather; lifted index is fetched but excluded here
+    # GFS-derived aviation weather. lifted index is fetched but excluded here
     # because its archived distribution is not stationary across years
     "aviation_weather": [
         "apt1_visibility_min", "apt2_visibility_min",

@@ -35,7 +35,7 @@ def make_hourly_day(airport="AAA", date="2023-01-15", **overrides):
 
 def test_visibility_gated_to_operating_hours():
     df = make_hourly_day()
-    # dense fog at 3am only; operating hours (6-23) stay clear
+    # dense fog at 3am only, operating hours (6-23) stay clear
     df.loc[df["datetime"].dt.hour == 3, "visibility"] = 100.0
 
     agg = aggregate_aviation_hourly_to_daily(df)
@@ -108,7 +108,7 @@ def test_missing_visibility_stays_nan_while_counts_fill_zero():
 
 def test_all_none_object_columns_do_not_raise():
     # uncovered archive periods return every value as None, which pandas
-    # builds as object columns; aggregation must degrade to NaN, not raise
+    # builds as object columns, aggregation must degrade to NaN, not raise
     df = make_hourly_day()
     for col in ["visibility", "cape", "weather_code", "lifted_index"]:
         df[col] = [None] * len(df)
@@ -131,7 +131,7 @@ def test_grouping_by_airport_and_date():
     agg = aggregate_aviation_hourly_to_daily(df)
 
     assert len(agg) == 3
-    assert set(zip(agg["airport"], agg["date"].dt.strftime("%Y-%m-%d"))) == {
+    assert set(zip(agg["airport"], agg["date"].dt.strftime("%Y-%m-%d"), strict=True)) == {
         ("AAA", "2023-01-15"),
         ("AAA", "2023-01-16"),
         ("BBB", "2023-01-15"),

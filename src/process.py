@@ -100,7 +100,7 @@ def aggregate_inbound_by_destination(df, airports):
     """
     Aggregates all-carrier inbound arrivals per destination airport-day,
     computed before the route filter so it covers every inbound flight, not
-    just the modeled routes. Backtest evidence only; the model feature uses
+    just the modeled routes. Backtest evidence only, the model feature uses
     the modeled-routes variant built inside FeatureBuilder.
     """
     inbound = df[df["DEST"].isin(airports)]
@@ -169,7 +169,9 @@ def fill_missing_dates(daily):
         daily[col] = daily[col].fillna(0)
     daily["cancel_rate"] = daily["cancel_rate"].fillna(0)
 
-    route_meta = daily.groupby("route")[["avg_daily_flights", "total_flights", "avg_distance"]].first()
+    route_meta = daily.groupby("route")[
+        ["avg_daily_flights", "total_flights", "avg_distance"]
+    ].first()
     for col in route_meta.columns:
         daily[col] = daily["route"].map(route_meta[col])
 
@@ -221,7 +223,9 @@ def merge_weather_data(daily, weather):
         (daily["apt1_is_adverse"] == 1) | (daily["apt2_is_adverse"] == 1)
     ).astype(int)
 
-    daily["total_precip"] = daily["apt1_precip_total"].fillna(0) + daily["apt2_precip_total"].fillna(0)
+    daily["total_precip"] = (
+        daily["apt1_precip_total"].fillna(0) + daily["apt2_precip_total"].fillna(0)
+    )
     daily["total_snowfall"] = daily["apt1_snowfall"].fillna(0) + daily["apt2_snowfall"].fillna(0)
     daily["max_wind"] = daily[["apt1_wind_speed_max", "apt2_wind_speed_max"]].max(axis=1)
 

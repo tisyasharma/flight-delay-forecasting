@@ -5,7 +5,7 @@ import holidays
 import numpy as np
 import pandas as pd
 
-from src.config import COVID_START, COVID_PEAK_END, COVID_RECOVERY_END, TRAIN_END
+from src.config import COVID_PEAK_END, COVID_RECOVERY_END, COVID_START, TRAIN_END
 
 PROJECT_ROOT = Path(__file__).parent.parent
 PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed"
@@ -144,11 +144,11 @@ class FeatureBuilder:
             for window in [7, 14]:
                 self.df[f"rolling_mean_{window}{suffix}"] = (
                     self.df.groupby("route")[target]
-                    .transform(lambda x: x.shift(1).rolling(window, min_periods=1).mean())
+                    .transform(lambda x, w=window: x.shift(1).rolling(w, min_periods=1).mean())
                 )
                 self.df[f"rolling_std_{window}{suffix}"] = (
                     self.df.groupby("route")[target]
-                    .transform(lambda x: x.shift(1).rolling(window, min_periods=1).std())
+                    .transform(lambda x, w=window: x.shift(1).rolling(w, min_periods=1).std())
                 )
 
             self.df[f"ewm_7{suffix}"] = (
@@ -304,7 +304,7 @@ class FeatureBuilder:
     def add_aviation_features(self):
         """
         Fills the GFS aviation columns. Visibility gets the train-window median
-        because zero would mean fog, the opposite of missing; convective, gust,
+        because zero would mean fog, the opposite of missing, convective, gust,
         cloud, and freezing-rain columns default to a benign zero.
         """
         if self.state is None:
@@ -341,7 +341,9 @@ class FeatureBuilder:
         return self
 
     def fill_missing_values(self):
-        lag_cols = [c for c in self.df.columns if c.startswith(("lag_", "rolling_", "ewm_", "hub_"))]
+        lag_cols = [
+            c for c in self.df.columns if c.startswith(("lag_", "rolling_", "ewm_", "hub_"))
+        ]
 
         if self.state is None:
             if self.train_end_date:
@@ -403,8 +405,12 @@ class FeatureBuilder:
         return self.df
 
 
-def build_features(input_path=None, output_path=None, train_end_date="2024-01-01",
+def build_features(input_path=None, output_path=None, train_end_date=None,
                    state_path=None):
+    """Builds the feature table, train_end_date defaults to config.TRAIN_END."""
+    if train_end_date is None:
+        train_end_date = TRAIN_END
+
     if input_path is None:
         input_path = PROCESSED_DATA_DIR / "daily_route_demand.csv"
 

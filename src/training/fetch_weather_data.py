@@ -4,7 +4,11 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from src.weather.common import aggregate_hourly_to_daily, process_weather_data
+from src.weather.common import (
+    aggregate_hourly_to_daily,
+    drop_unsettled_tail,
+    process_weather_data,
+)
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
@@ -25,7 +29,9 @@ AIRPORT_COORDS = {
     "KOA": {"lat": 19.7388, "lon": -156.0456, "name": "Kona", "tz": "Pacific/Honolulu"},
     "LAS": {"lat": 36.0840, "lon": -115.1537, "name": "Las Vegas", "tz": "America/Los_Angeles"},
     "LAX": {"lat": 33.9416, "lon": -118.4085, "name": "Los Angeles", "tz": "America/Los_Angeles"},
-    "LGA": {"lat": 40.7769, "lon": -73.8740, "name": "New York LaGuardia", "tz": "America/New_York"},
+    "LGA": {
+        "lat": 40.7769, "lon": -73.8740, "name": "New York LaGuardia", "tz": "America/New_York"
+    },
     "LIH": {"lat": 21.9760, "lon": -159.3390, "name": "Lihue", "tz": "Pacific/Honolulu"},
     "MCO": {"lat": 28.4312, "lon": -81.3081, "name": "Orlando", "tz": "America/New_York"},
     "MIA": {"lat": 25.7959, "lon": -80.2870, "name": "Miami", "tz": "America/New_York"},
@@ -37,8 +43,34 @@ AIRPORT_COORDS = {
     "SLC": {"lat": 40.7899, "lon": -111.9791, "name": "Salt Lake City", "tz": "America/Denver"},
 }
 
+def settled_end_date(lag_days=7):
+    """
+    Last day the fetch window covers. The era5 archive and the gfs
+    historical-forecast archive lag realtime by a few days, so the window
+    ends a week back from today rather than at a pinned date that goes
+    stale between monthly refreshes.
+    """
+    return (
+        (pd.Timestamp.now(tz="UTC").normalize() - pd.Timedelta(days=lag_days)).date().isoformat()
+    )
+
+
 DATE_START = "2019-01-01"
-DATE_END = "2025-06-30"
+DATE_END = settled_end_date()
+
+
+def extension_start(existing_df, airport):
+    """
+    Start of the fetch window for one airport: DATE_START when it has no
+    stored rows, the day after its last stored date when it does, and None
+    when it is already current through DATE_END. This makes a rerun extend
+    the tables forward instead of skipping any airport that already exists.
+    """
+    if existing_df is None or airport not in existing_df["airport"].values:
+        return DATE_START
+    last = existing_df.loc[existing_df["airport"] == airport, "date"].max()
+    start = (pd.Timestamp(last) + pd.Timedelta(days=1)).date().isoformat()
+    return None if start > DATE_END else start
 
 BASE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
@@ -50,7 +82,9 @@ MAX_RETRIES = 5
 BASE_DELAY = 2
 
 
-def fetch_weather_for_airport(airport_code, lat, lon, start_date, end_date, timezone="America/New_York"):
+def fetch_weather_for_airport(
+    airport_code, lat, lon, start_date, end_date, timezone="America/New_York"
+):
     """Fetches daily weather from Open-Meteo for one airport, retries on rate limit."""
     params = {
         "latitude": lat,
@@ -111,7 +145,9 @@ def fetch_weather_for_airport(airport_code, lat, lon, start_date, end_date, time
     raise RuntimeError(f"Failed to fetch weather for {airport_code} after {MAX_RETRIES} retries")
 
 
-def fetch_hourly_weather_for_airport(airport_code, lat, lon, start_date, end_date, timezone="America/New_York"):
+def fetch_hourly_weather_for_airport(
+    airport_code, lat, lon, start_date, end_date, timezone="America/New_York"
+):
     """Fetches hourly weather from Open-Meteo for one airport, retries on rate limit."""
     params = {
         "latitude": lat,
@@ -161,7 +197,9 @@ def fetch_hourly_weather_for_airport(airport_code, lat, lon, start_date, end_dat
             print(f"request failed ({e}), retrying in {wait_time}s...", end=" ")
             time.sleep(wait_time)
 
-    raise RuntimeError(f"Failed to fetch hourly weather for {airport_code} after {MAX_RETRIES} retries")
+    raise RuntimeError(
+        f"Failed to fetch hourly weather for {airport_code} after {MAX_RETRIES} retries"
+    )
 
 
 def load_existing_weather():
@@ -175,29 +213,33 @@ def load_existing_weather():
 
 
 def fetch_all_weather(resume=True):
-    """Fetches weather for all airports, saves after each one in case it crashes."""
-    all_data = []
-    existing_airports = set()
+    """
+    Fetches or extends daily weather for all airports, saving after each one
+    in case it crashes. Airports already current through DATE_END are skipped,
+    airports with older rows are extended from the day after their last date.
+    """
+    existing_df = load_existing_weather() if resume else None
+    all_data = [existing_df] if existing_df is not None else []
 
-    if resume:
-        existing_df = load_existing_weather()
-        if existing_df is not None:
-            existing_airports = set(existing_df["airport"].unique())
-            all_data.append(existing_df)
-            print(f"Found existing data for {len(existing_airports)} airports")
+    plans = {a: extension_start(existing_df, a) for a in AIRPORT_COORDS}
+    current = [a for a, s in plans.items() if s is None]
+    print(f"{len(plans) - len(current)} airports to fetch or extend, "
+          f"{len(current)} already current through {DATE_END}")
 
-    airports_to_fetch = {k: v for k, v in AIRPORT_COORDS.items() if k not in existing_airports}
-    print(f"{len(airports_to_fetch)} airports to fetch, {len(existing_airports)} already done")
-
-    for airport, coords in airports_to_fetch.items():
-        print(f"{airport} ({coords['name']})...", end=" ")
+    failed = []
+    for airport, coords in AIRPORT_COORDS.items():
+        start = plans[airport]
+        if start is None:
+            continue
+        print(f"{airport} ({coords['name']}) from {start}...", end=" ")
 
         try:
             df = fetch_weather_for_airport(
                 airport, coords["lat"], coords["lon"],
-                DATE_START, DATE_END,
+                start, DATE_END,
                 timezone=coords.get("tz", "America/New_York")
             )
+            df = drop_unsettled_tail(df, ["weather_code", "temp_max", "wind_speed_max"])
             df = process_weather_data(df)
             all_data.append(df)
             print(f"{len(df)} days")
@@ -209,12 +251,16 @@ def fetch_all_weather(resume=True):
 
         except Exception as e:
             print(f"FAILED: {e}")
+            failed.append(airport)
             continue
 
         time.sleep(3)
 
     if not all_data:
         raise RuntimeError("No weather data fetched")
+    if failed:
+        raise RuntimeError(f"daily weather fetch failed for {', '.join(failed)}, "
+                           "rerun to extend the remaining airports")
 
     combined = pd.concat(all_data, ignore_index=True)
     combined = combined.drop_duplicates(subset=["airport", "date"])
@@ -234,29 +280,33 @@ def load_existing_hourly():
 
 
 def fetch_all_hourly_weather(resume=True):
-    """Fetches hourly weather for all airports and aggregates to daily features."""
-    all_data = []
-    existing_airports = set()
+    """
+    Fetches or extends hourly weather for all airports and aggregates to
+    daily features, with the same per-airport date extension as the daily
+    fetch.
+    """
+    existing_df = load_existing_hourly() if resume else None
+    all_data = [existing_df] if existing_df is not None else []
 
-    if resume:
-        existing_df = load_existing_hourly()
-        if existing_df is not None:
-            existing_airports = set(existing_df["airport"].unique())
-            all_data.append(existing_df)
-            print(f"Found existing hourly data for {len(existing_airports)} airports")
+    plans = {a: extension_start(existing_df, a) for a in AIRPORT_COORDS}
+    current = [a for a, s in plans.items() if s is None]
+    print(f"Hourly: {len(plans) - len(current)} airports to fetch or extend, "
+          f"{len(current)} already current through {DATE_END}")
 
-    airports_to_fetch = {k: v for k, v in AIRPORT_COORDS.items() if k not in existing_airports}
-    print(f"Hourly: {len(airports_to_fetch)} airports to fetch, {len(existing_airports)} already done")
-
-    for airport, coords in airports_to_fetch.items():
-        print(f"  {airport} ({coords['name']}) hourly...", end=" ")
+    failed = []
+    for airport, coords in AIRPORT_COORDS.items():
+        start = plans[airport]
+        if start is None:
+            continue
+        print(f"  {airport} ({coords['name']}) hourly from {start}...", end=" ")
 
         try:
             hourly_df = fetch_hourly_weather_for_airport(
                 airport, coords["lat"], coords["lon"],
-                DATE_START, DATE_END,
+                start, DATE_END,
                 timezone=coords.get("tz", "America/New_York")
             )
+            hourly_df = drop_unsettled_tail(hourly_df, ["weather_code", "temp", "wind_speed"])
             daily_agg = aggregate_hourly_to_daily(hourly_df)
             all_data.append(daily_agg)
             print(f"{len(daily_agg)} days")
@@ -267,6 +317,7 @@ def fetch_all_hourly_weather(resume=True):
 
         except Exception as e:
             print(f"FAILED: {e}")
+            failed.append(airport)
             continue
 
         time.sleep(5)
@@ -274,6 +325,9 @@ def fetch_all_hourly_weather(resume=True):
     if not all_data:
         print("No hourly weather data fetched")
         return None
+    if failed:
+        raise RuntimeError(f"hourly weather fetch failed for {', '.join(failed)}, "
+                           "rerun to extend the remaining airports")
 
     combined = pd.concat(all_data, ignore_index=True)
     combined = combined.drop_duplicates(subset=["airport", "date"])

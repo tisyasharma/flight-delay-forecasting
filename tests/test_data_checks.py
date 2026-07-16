@@ -12,6 +12,7 @@ from src.data_checks import (
     check_holiday_flags,
     check_raw_completeness,
     check_route_set,
+    check_weather_continuity,
     check_wind_seam,
 )
 
@@ -85,3 +86,23 @@ def test_wind_seam_quiet_and_breached():
 
     failures = check_wind_seam(_wind_frame(shift=-8.0))
     assert len(failures) == 1 and "PSI breach" in failures[0]
+
+
+def test_weather_continuity_full_and_holed(tmp_path):
+    dates = pd.date_range("2024-01-01", periods=10, freq="D")
+    full = pd.DataFrame({"airport": "ATL", "date": dates, "temp_max": 20.0})
+    for name in ("weather_daily", "weather_hourly_agg", "aviation_daily"):
+        full.to_csv(tmp_path / f"{name}.csv", index=False)
+    assert check_weather_continuity(weather_dir=tmp_path) == []
+
+    holed = full.drop(index=[4, 5])
+    holed.to_csv(tmp_path / "weather_daily.csv", index=False)
+    failures = check_weather_continuity(weather_dir=tmp_path)
+    assert len(failures) == 1
+    assert "2 missing days" in failures[0] and "2024-01-05" in failures[0]
+
+
+def test_weather_continuity_missing_file(tmp_path):
+    failures = check_weather_continuity(weather_dir=tmp_path)
+    assert len(failures) == 3
+    assert all("missing from" in f for f in failures)

@@ -7,11 +7,16 @@ import lightgbm as lgb
 import numpy as np
 import xgboost as xgb
 
-from src.config import (
-    DATA_START, HPO_TRAIN_END, HPO_VAL_END, SEQUENCE_LENGTH, WALK_FORWARD_FOLDS,
-    TABULAR_FEATURES, SEQUENCE_MODEL_FEATURES,
-)
 from src import tracking
+from src.config import (
+    DATA_START,
+    HPO_TRAIN_END,
+    HPO_VAL_END,
+    SEQUENCE_LENGTH,
+    SEQUENCE_MODEL_FEATURES,
+    TABULAR_FEATURES,
+    WALK_FORWARD_FOLDS,
+)
 from src.evaluation.conformal import apply_cqr, cqr_offset, split_calibration_window
 from src.evaluation.metrics import (
     calculate_classification_metrics,
@@ -200,7 +205,7 @@ def train_eval_lstm(df, features, target_col, fold, device):
     from sklearn.preprocessing import StandardScaler
     from torch.utils.data import DataLoader, TensorDataset
 
-    from src.models.lstm import RouteDelayLSTM, LSTMTrainer
+    from src.models.lstm import LSTMTrainer, RouteDelayLSTM
     from src.training.sequence_utils import create_sequences_by_date, evaluate_model
 
     params = load_params("lstm")
@@ -357,20 +362,20 @@ def eval_naive(df, target_col, fold):
     from src.models.simple_baselines import NaiveBaseline
 
     train_df = df[df["date"] < fold["train_end"]]
-    test_df = df[(df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])]
+    test_mask = (df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])
 
-    if len(test_df) == 0:
+    if not test_mask.any():
         return None
 
     model = NaiveBaseline(target_col=target_col)
     model.fit(train_df)
-    preds = model.predict(test_df)
+    # predict over the full frame so the first test day sees the prior
+    # actual instead of the median fallback, then score test rows only
+    preds = model.predict(df)[test_mask]
+    y_test = df.loc[test_mask, target_col]
 
     valid_mask = preds.notna()
-    return calculate_delay_metrics(
-        test_df.loc[valid_mask, target_col].values,
-        preds[valid_mask].values
-    )
+    return calculate_delay_metrics(y_test[valid_mask].values, preds[valid_mask].values)
 
 
 def eval_moving_average(df, target_col, fold):
@@ -378,20 +383,19 @@ def eval_moving_average(df, target_col, fold):
     from src.models.simple_baselines import MovingAverageBaseline
 
     train_df = df[df["date"] < fold["train_end"]]
-    test_df = df[(df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])]
+    test_mask = (df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])
 
-    if len(test_df) == 0:
+    if not test_mask.any():
         return None
 
     model = MovingAverageBaseline(window=7, target_col=target_col)
     model.fit(train_df)
-    preds = model.predict(test_df)
+    # full-frame predict for trailing context across the fold boundary
+    preds = model.predict(df)[test_mask]
+    y_test = df.loc[test_mask, target_col]
 
     valid_mask = preds.notna()
-    return calculate_delay_metrics(
-        test_df.loc[valid_mask, target_col].values,
-        preds[valid_mask].values
-    )
+    return calculate_delay_metrics(y_test[valid_mask].values, preds[valid_mask].values)
 
 
 def eval_lightgbm_classifier(df, features, target_col, fold):
@@ -448,20 +452,19 @@ def eval_seasonal_naive(df, target_col, fold):
     from src.models.simple_baselines import SeasonalNaiveBaseline
 
     train_df = df[df["date"] < fold["train_end"]]
-    test_df = df[(df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])]
+    test_mask = (df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])
 
-    if len(test_df) == 0:
+    if not test_mask.any():
         return None
 
     model = SeasonalNaiveBaseline(seasonality=7, target_col=target_col)
     model.fit(train_df)
-    preds = model.predict(test_df)
+    # full-frame predict for trailing context across the fold boundary
+    preds = model.predict(df)[test_mask]
+    y_test = df.loc[test_mask, target_col]
 
     valid_mask = preds.notna()
-    return calculate_delay_metrics(
-        test_df.loc[valid_mask, target_col].values,
-        preds[valid_mask].values
-    )
+    return calculate_delay_metrics(y_test[valid_mask].values, preds[valid_mask].values)
 
 
 def eval_climatology_quantile(df, target_col, fold):
@@ -501,7 +504,7 @@ def aggregate_fold_metrics(all_fold_metrics):
     metric_keys = [
         "mae", "rmse", "r2", "within_15", "median_ae",
         "coverage_80", "interval_width", "coverage_80_cqr", "interval_width_cqr",
-        "pinball_10", "pinball_50", "pinball_90",
+        "pinball_10", "pinball_50", "pinball_90", "wis",
         "below_q10", "below_q50", "below_q90",
         "pr_auc", "roc_auc", "base_rate", "brier",
     ]
@@ -537,8 +540,9 @@ def main():
     parser = argparse.ArgumentParser(description="Walk-forward validation")
     parser.add_argument(
         "--models",
-        default=None,
-        help="comma-separated subset of models to run (default: all)",
+        default="naive,ma,seasonal_naive,climatology_q,xgboost,lightgbm,lightgbm_q,lightgbm_clf",
+        help="comma-separated subset of models to run (default: every model except "
+             "the torch comparators; pass lstm,tcn explicitly to include them)",
     )
     args = parser.parse_args()
 

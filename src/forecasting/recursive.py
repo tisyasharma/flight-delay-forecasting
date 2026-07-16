@@ -12,10 +12,10 @@ route statistics, or weather, all available across the horizon. This module
 recomputes those eleven from the mixed actual+predicted series, one day at a
 time across all routes at once, and leaves every other column untouched.
 
-Feature recomputation must match FeatureBuilder exactly; the parity tests in
+Feature recomputation must match FeatureBuilder exactly, the parity tests in
 tests/test_recursive.py pin that equivalence, first-step against the built
 table and full-depth via an oracle model. The ewm has infinite memory, so a
-finite trailing window truncates it; at the default 90 days the relative
+finite trailing window truncates it, at the default 90 days the relative
 error is (0.75)**89 ~ 1e-11, far inside np.allclose tolerances.
 """
 
@@ -36,12 +36,12 @@ class RecursiveForecaster:
     Rolls quantile forecasts forward day by day from the last known actual.
 
     models: mapping of quantile alpha to a fitted predictor with .predict(X),
-    e.g. {0.1: m10, 0.5: m50, 0.9: m90}. The median feeds the recursion; the
+    e.g. {0.1: m10, 0.5: m50, 0.9: m90}. The median feeds the recursion, the
     outer quantiles are scored on the same feature rows each step.
 
     feature_state: the serialized train-time state (feature_state.json). Only
     its route set is used, as an assertion that the frame and the models talk
-    about the same routes; statistics are never recomputed here.
+    about the same routes, statistics are never recomputed here.
     """
 
     def __init__(self, models, feature_state, features=None, window=MIN_WINDOW):
@@ -65,11 +65,11 @@ class RecursiveForecaster:
         feature column) covering a complete route x date grid from at least
         `window` days before last_actual_date through last_actual_date+n_days.
         Target values after last_actual_date are ignored. The target-dependent
-        columns of horizon rows are overwritten with recomputed values; all
+        columns of horizon rows are overwritten with recomputed values, all
         other columns are used as-is.
 
         conformal_offset: scalar, or a dict mapping recursion depth k to an
-        offset; depths beyond the deepest fitted key reuse the deepest value.
+        offset, depths beyond the deepest fitted key reuse the deepest value.
 
         Returns one row per route per horizon day: raw sorted quantiles, the
         conformally widened interval, and the recursion depth k.

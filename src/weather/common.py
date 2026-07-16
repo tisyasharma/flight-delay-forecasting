@@ -10,7 +10,7 @@ import pandas as pd
 FREEZING_RAIN_CODES = {56, 57, 66, 67}
 
 # percent low-cloud cover treated as a broken-or-worse deck (BKN is 5/8 oktas,
-# about 62 percent); used as the ceiling proxy since no gridded ceiling exists
+# about 62 percent), used as the ceiling proxy since no gridded ceiling exists
 LOW_CLOUD_THRESHOLD = 60
 
 
@@ -75,6 +75,26 @@ def condition_to_severity(condition):
     return severity_map.get(condition, 2)
 
 
+def drop_unsettled_tail(df, probe_cols):
+    """
+    Trims trailing days the upstream archive has not settled yet. Open-Meteo
+    returns the full requested range and pads unpublished days with nulls,
+    and the downstream fill rules would turn those into fabricated clear
+    days, so rows after the last date with any real value are dropped and
+    the next run's extension refetches them. Interior gaps are left alone,
+    they belong to the fill rules.
+    """
+    present = [c for c in probe_cols if c in df.columns]
+    if df.empty or not present:
+        return df
+    date_col = "datetime" if "datetime" in df.columns else "date"
+    dates = pd.to_datetime(df[date_col]).dt.normalize()
+    settled = df[present].notna().any(axis=1)
+    if not settled.any():
+        return df.iloc[0:0]
+    return df[dates <= dates[settled].max()]
+
+
 def process_weather_data(df):
     """Adds condition labels, severity, and binary weather flags."""
     df["condition"] = df["weather_code"].apply(weather_code_to_condition)
@@ -133,14 +153,14 @@ def aggregate_aviation_hourly_to_daily(hourly_df):
     Computes daily aviation-weather aggregates from hourly GFS data: visibility
     floor and 10th percentile, convective potential, gusts and gust spread,
     low-cloud hours (ceiling proxy), and freezing-rain hours. Visibility stays
-    NaN when unobserved because 0 would mean fog, the opposite of missing;
-    zero-filling is left to the feature builder's imputation.
+    NaN when unobserved because 0 would mean fog, the opposite of missing.
+    Zero-filling is left to the feature builder's imputation.
     """
     hourly_df["date"] = hourly_df["datetime"].dt.date
     hourly_df["hour"] = hourly_df["datetime"].dt.hour
 
     # periods without archive coverage (Alaska and Hawaii before 2022) arrive
-    # as all-None object columns; coerce so aggregation yields NaN, not errors
+    # as all-None object columns, coerce so aggregation yields NaN, not errors
     value_cols = ["visibility", "cape", "lifted_index", "cloud_cover_low",
                   "weather_code", "wind_gusts", "wind_speed", "freezing_level"]
     for col in value_cols:

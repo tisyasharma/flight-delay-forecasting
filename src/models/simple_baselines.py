@@ -1,6 +1,6 @@
 """
 Dependency-light baselines over route/date dataframes, importable without
-torch or prophet.
+torch.
 """
 
 

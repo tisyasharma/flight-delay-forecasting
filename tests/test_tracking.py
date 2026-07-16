@@ -47,9 +47,11 @@ def test_nested_run_noop_without_mlflow():
     if tracking.mlflow is not None:
         pytest.skip("mlflow installed, the no-op path is not exercisable here")
 
-    with tracking.start_run(run_name="parent"):
-        with tracking.start_run(run_name="child", nested=True) as child:
-            assert child is None
+    with (
+        tracking.start_run(run_name="parent"),
+        tracking.start_run(run_name="child", nested=True) as child,
+    ):
+        assert child is None
 
 
 def test_missing_mlflow_warns_once_on_stderr(monkeypatch, capsys):
@@ -72,7 +74,9 @@ def test_provenance_tags_fingerprint_code_data_and_env(tmp_path):
 
     data_file = tmp_path / "features.csv"
     data_file.write_text("date,route\n2024-01-01,A_B\n")
-    df = pd.DataFrame({"date": pd.to_datetime(["2024-01-01", "2024-03-31"]), "route": ["A_B", "A_B"]})
+    df = pd.DataFrame(
+        {"date": pd.to_datetime(["2024-01-01", "2024-03-31"]), "route": ["A_B", "A_B"]}
+    )
 
     tags = tracking.provenance_tags(features_df=df, features_path=data_file)
 

@@ -6,39 +6,14 @@ import optuna
 import xgboost as xgb
 
 from src import tracking
-from src.config import HPO_TRAIN_END, HPO_VAL_END, TABULAR_FEATURES
 from src.evaluation.metrics import calculate_delay_metrics
-from src.training.fold_features import RAW_PATH, build_fold_features, load_raw
+from src.training.common import load_splits
+from src.training.fold_features import RAW_PATH
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
-DATA_DIR = PROJECT_ROOT / "data" / "processed"
 CONFIGS_DIR = PROJECT_ROOT / "configs"
 CONFIGS_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def load_splits():
-    """
-    Builds features gated at the HPO cutoff and splits into train/val arrays.
-    The canonical features.csv is not used here, its train-window statistics
-    are computed at the production cutoff and would leak into the HPO holdout.
-    """
-    df = build_fold_features(load_raw(), HPO_TRAIN_END)
-
-    available_features = [c for c in TABULAR_FEATURES if c in df.columns]
-    target_col = "avg_arr_delay"
-
-    train_df = df[df["date"] < HPO_TRAIN_END].dropna(subset=available_features + [target_col])
-    val_df = df[(df["date"] >= HPO_TRAIN_END) & (df["date"] < HPO_VAL_END)].dropna(
-        subset=available_features + [target_col]
-    )
-
-    X_train = train_df[available_features].values
-    y_train = train_df[target_col].values
-    X_val = val_df[available_features].values
-    y_val = val_df[target_col].values
-
-    return X_train, y_train, X_val, y_val
 
 
 def objective(trial, X_train, y_train, X_val, y_val):

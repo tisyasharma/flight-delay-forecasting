@@ -5,7 +5,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src.config import COVID_START, COVID_PEAK_END
+from src.config import COVID_PEAK_END, COVID_START
+
 from .metrics import calculate_metrics, calculate_metrics_by_segment
 
 

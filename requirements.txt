@@ -1,3 +1,0 @@
-# Full research environment: the package plus deep learning and tracking extras.
-# Dependency groups are defined in pyproject.toml.
--e .[dev,dl,track]

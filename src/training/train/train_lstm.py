@@ -1,5 +1,4 @@
 import argparse
-import json
 import random
 from pathlib import Path
 
@@ -10,19 +9,24 @@ import torch
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
-from src.models.lstm import RouteDelayLSTM, LSTMTrainer
 from src.config import (
-    TRAIN_END, VAL_END, TEST_END, FINAL_TEST_START, DATA_START,
-    SEQUENCE_LENGTH, SEQUENCE_MODEL_FEATURES,
+    DATA_START,
+    FINAL_TEST_START,
+    SEQUENCE_LENGTH,
+    SEQUENCE_MODEL_FEATURES,
+    TEST_END,
+    TRAIN_END,
+    VAL_END,
 )
 from src.evaluation.metrics import calculate_delay_metrics
+from src.models.lstm import LSTMTrainer, RouteDelayLSTM
+from src.training.common import load_tuned_params
 from src.training.sequence_utils import create_sequences_by_date, evaluate_model
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODELS_DIR = PROJECT_ROOT / "trained_models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
-CONFIGS_DIR = PROJECT_ROOT / "configs"
 
 DEFAULT_PARAMS = {
     "hidden_size": 64,
@@ -32,18 +36,6 @@ DEFAULT_PARAMS = {
     "batch_size": 64,
     "weight_decay": 0.01,
 }
-
-
-def load_tuned_params():
-    """Loads Optuna best params if available, otherwise returns defaults."""
-    params_path = CONFIGS_DIR / "best_params_lstm.json"
-    if params_path.exists():
-        with open(params_path) as f:
-            tuned = json.load(f)
-        print(f"Using Optuna-tuned params from {params_path.name}")
-        return tuned
-    print("No tuned params found, using defaults")
-    return DEFAULT_PARAMS.copy()
 
 
 def main():
@@ -114,19 +106,28 @@ def main():
 
     print(f"sequences: train={len(train_X):,}  val={len(val_X):,}  devtest={len(test_X):,}")
 
-    hp = load_tuned_params()
+    hp = load_tuned_params("lstm", DEFAULT_PARAMS)
     batch_size = hp.get("batch_size", 64)
 
     train_loader = DataLoader(
-        TensorDataset(torch.tensor(train_X, dtype=torch.float32), torch.tensor(train_y, dtype=torch.float32)),
+        TensorDataset(
+            torch.tensor(train_X, dtype=torch.float32),
+            torch.tensor(train_y, dtype=torch.float32),
+        ),
         batch_size=batch_size, shuffle=True
     )
     val_loader = DataLoader(
-        TensorDataset(torch.tensor(val_X, dtype=torch.float32), torch.tensor(val_y, dtype=torch.float32)),
+        TensorDataset(
+            torch.tensor(val_X, dtype=torch.float32),
+            torch.tensor(val_y, dtype=torch.float32),
+        ),
         batch_size=batch_size, shuffle=False
     )
     test_loader = DataLoader(
-        TensorDataset(torch.tensor(test_X, dtype=torch.float32), torch.tensor(test_y, dtype=torch.float32)),
+        TensorDataset(
+            torch.tensor(test_X, dtype=torch.float32),
+            torch.tensor(test_y, dtype=torch.float32),
+        ),
         batch_size=batch_size, shuffle=False
     )
 

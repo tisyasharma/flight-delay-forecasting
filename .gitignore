@@ -42,3 +42,6 @@ outputs/*
 # Frontend
 frontend/node_modules/
 frontend/dist/
+
+# derived feature table, rebuilt by make features from the tracked inputs
+data/processed/features.csv

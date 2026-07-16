@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 # serving-generation split. the previous generation (train_end 2024-01-01)
-# ran the locked 2025-H1 final test exactly once on 2026-07-10; this
+# ran the locked 2025-H1 final test exactly once on 2026-07-10, and this
 # generation trains through that consumed window and its blind test is the
 # live public record, as the model card discloses
 TRAIN_END = "2026-01-01"

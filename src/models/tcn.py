@@ -236,13 +236,3 @@ class TCNTrainer:
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.history = checkpoint["history"]
-
-
-if __name__ == "__main__":
-    input_size = 22
-    model = RouteDelayTCN(input_size=input_size, num_channels=[32, 64, 64])
-    print(f"Receptive field: {model.receptive_field}")
-
-    x = torch.randn(16, 28, input_size)
-    output = model(x)
-    print(f"Input: {x.shape}, Output: {output.shape}")

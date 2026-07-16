@@ -29,7 +29,7 @@ jobs:
             constraints.txt
 
       - name: Install dependencies
-        run: pip install -e '.[dev,serve]' -c constraints.txt
+        run: pip install -e '.[dev]' -c constraints.txt
 
       - name: Verify torch is not installed
         run: python -c "import importlib.util as u; assert u.find_spec('torch') is None"

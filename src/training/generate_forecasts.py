@@ -1,6 +1,6 @@
 import json
 import warnings
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import joblib
@@ -8,19 +8,19 @@ import numpy as np
 import pandas as pd
 import torch
 
-from src.models.lstm import RouteDelayLSTM
-from src.models.tcn import RouteDelayTCN
-from src.models.device import get_device
-from src.evaluation.metrics import calculate_delay_metrics
 from src.config import (
     SEQUENCE_LENGTH,
     SEQUENCE_MODEL_FEATURES,
 )
+from src.evaluation.metrics import calculate_delay_metrics
+from src.models.device import get_device
+from src.models.lstm import RouteDelayLSTM
+from src.models.tcn import RouteDelayTCN
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-# the study dashboard documents the 2024-cutoff evaluation artifacts; its
+# the study dashboard documents the 2024-cutoff evaluation artifacts, so its
 # dates are pinned, and main() refuses to run against artifacts built at a
 # different cutoff so a re-run can never silently overwrite the published
 # study with in-sample numbers
@@ -50,7 +50,10 @@ def calc_metrics(actual, pred, delay_threshold=15):
     metrics = calculate_delay_metrics(actual, pred, delay_threshold)
 
     if metrics["mae"] is None:
-        return {k: None for k in ["mae", "within_15", "rmse", "mape", "median_ae", "threshold_acc", "r2"]}
+        return {
+            k: None
+            for k in ["mae", "within_15", "rmse", "mape", "median_ae", "threshold_acc", "r2"]
+        }
 
     return {
         "mae": round(metrics["mae"], 1),
@@ -109,7 +112,9 @@ def generate_baseline_predictions(df, test_start, target_col):
     return all_preds
 
 
-def generate_lstm_predictions(df, model, scaler, features, test_start, target_col, target_scaler=None):
+def generate_lstm_predictions(
+    df, model, scaler, features, test_start, target_col, target_scaler=None
+):
     """Runs LSTM inference on test sequences for each route."""
     routes = df["route"].unique()
     all_preds = {}
@@ -119,7 +124,9 @@ def generate_lstm_predictions(df, model, scaler, features, test_start, target_co
     model = model.to(device)
 
     for route in routes:
-        X_test, y_test, test_dates = create_sequences(df, route, scaler, test_start, features, target_col)
+        X_test, y_test, test_dates = create_sequences(
+            df, route, scaler, test_start, features, target_col
+        )
         if len(X_test) == 0:
             continue
 
@@ -142,7 +149,9 @@ def generate_lstm_predictions(df, model, scaler, features, test_start, target_co
     return all_preds
 
 
-def generate_tcn_predictions(df, model, scaler, features, test_start, target_col, target_scaler=None):
+def generate_tcn_predictions(
+    df, model, scaler, features, test_start, target_col, target_scaler=None
+):
     """Runs TCN inference on test sequences for each route."""
     routes = df["route"].unique()
     all_preds = {}
@@ -152,7 +161,9 @@ def generate_tcn_predictions(df, model, scaler, features, test_start, target_col
     model = model.to(device)
 
     for route in routes:
-        X_test, y_test, test_dates = create_sequences(df, route, scaler, test_start, features, target_col)
+        X_test, y_test, test_dates = create_sequences(
+            df, route, scaler, test_start, features, target_col
+        )
         if len(X_test) == 0:
             continue
 
@@ -218,10 +229,10 @@ def merge_predictions(baseline_preds, lstm_preds, tcn_preds, xgboost_preds, ligh
 
         route_merged = []
         for p in baseline:
-            p["lstm"] = lstm.get(p["date"], None)
-            p["tcn"] = tcn.get(p["date"], None)
-            p["xgboost"] = xgb.get(p["date"], None)
-            p["lightgbm"] = lgb.get(p["date"], None)
+            p["lstm"] = lstm.get(p["date"])
+            p["tcn"] = tcn.get(p["date"])
+            p["xgboost"] = xgb.get(p["date"])
+            p["lightgbm"] = lgb.get(p["date"])
             route_merged.append(p)
 
         merged[route] = route_merged
@@ -288,10 +299,16 @@ def main():
     # load target scalers for inverse transform of model outputs
     lstm_target_scaler = joblib.load(MODELS_DIR / "target_scaler_lstm.pkl")
     tcn_target_scaler_path = MODELS_DIR / "target_scaler_tcn.pkl"
-    tcn_target_scaler = joblib.load(tcn_target_scaler_path) if tcn_target_scaler_path.exists() else lstm_target_scaler
+    tcn_target_scaler = (
+        joblib.load(tcn_target_scaler_path)
+        if tcn_target_scaler_path.exists()
+        else lstm_target_scaler
+    )
 
     # load all models
-    checkpoint = torch.load(MODELS_DIR / "best_lstm_arr_delay.pt", map_location="cpu", weights_only=False)
+    checkpoint = torch.load(
+        MODELS_DIR / "best_lstm_arr_delay.pt", map_location="cpu", weights_only=False
+    )
     lstm_model = RouteDelayLSTM(
         input_size=checkpoint.get("input_size", len(lstm_features)),
         hidden_size=checkpoint.get("hidden_size", 64),
@@ -304,7 +321,9 @@ def main():
     xgb_features = joblib.load(MODELS_DIR / "xgboost_features.pkl")
     xgb_features = [f for f in xgb_features if f in df.columns]
 
-    tcn_checkpoint = torch.load(MODELS_DIR / "best_tcn_arr_delay.pt", map_location="cpu", weights_only=False)
+    tcn_checkpoint = torch.load(
+        MODELS_DIR / "best_tcn_arr_delay.pt", map_location="cpu", weights_only=False
+    )
     tcn_model = RouteDelayTCN(
         input_size=tcn_checkpoint.get("input_size", len(lstm_features)),
         num_channels=tcn_checkpoint.get("num_channels", [32, 64, 64]),
@@ -320,10 +339,18 @@ def main():
     test_start = pd.Timestamp(TEST_START)
 
     baseline_preds = generate_baseline_predictions(df, test_start, target_col)
-    lstm_preds = generate_lstm_predictions(df, lstm_model, lstm_scaler, lstm_features, test_start, target_col, lstm_target_scaler)
-    tcn_preds = generate_tcn_predictions(df, tcn_model, tcn_scaler, lstm_features, test_start, target_col, tcn_target_scaler)
-    xgboost_preds = generate_tabular_predictions(df, xgb_model, xgb_features, test_start, target_col, "xgboost")
-    lightgbm_preds = generate_tabular_predictions(df, lgb_model, lgb_features, test_start, target_col, "lightgbm")
+    lstm_preds = generate_lstm_predictions(
+        df, lstm_model, lstm_scaler, lstm_features, test_start, target_col, lstm_target_scaler
+    )
+    tcn_preds = generate_tcn_predictions(
+        df, tcn_model, tcn_scaler, lstm_features, test_start, target_col, tcn_target_scaler
+    )
+    xgboost_preds = generate_tabular_predictions(
+        df, xgb_model, xgb_features, test_start, target_col, "xgboost"
+    )
+    lightgbm_preds = generate_tabular_predictions(
+        df, lgb_model, lgb_features, test_start, target_col, "lightgbm"
+    )
 
     merged = merge_predictions(baseline_preds, lstm_preds, tcn_preds, xgboost_preds, lightgbm_preds)
     historical = generate_historical(df, test_start, target_col)
@@ -345,7 +372,7 @@ def main():
             paired = [(p["actual"], p[k]) for p in preds if p[k] is not None]
             if not paired:
                 continue
-            actuals, model_preds = zip(*paired)
+            actuals, model_preds = zip(*paired, strict=True)
             all_metrics[k]["by_route"][route] = calc_metrics(list(actuals), list(model_preds))
             all_actual[k].extend(actuals)
             all_pred[k].extend(model_preds)
@@ -373,12 +400,36 @@ def main():
         }
 
     models_output = {
-        "naive": {"name": "Naive", "description": "Yesterday's delay", "metrics": all_metrics["naive"]},
-        "ma": {"name": "Moving Average", "description": "7-day rolling mean", "metrics": all_metrics["ma"]},
-        "lstm": {"name": "LSTM", "description": "LSTM with attention", "metrics": all_metrics["lstm"]},
-        "tcn": {"name": "TCN", "description": "Temporal convolutional network", "metrics": all_metrics["tcn"]},
-        "xgboost": {"name": "XGBoost", "description": "Optuna-tuned gradient boosting", "metrics": all_metrics["xgboost"]},
-        "lightgbm": {"name": "LightGBM", "description": "Optuna-tuned leaf-wise gradient boosting", "metrics": all_metrics["lightgbm"]}
+        "naive": {
+            "name": "Naive",
+            "description": "Yesterday's delay",
+            "metrics": all_metrics["naive"],
+        },
+        "ma": {
+            "name": "Moving Average",
+            "description": "7-day rolling mean",
+            "metrics": all_metrics["ma"],
+        },
+        "lstm": {
+            "name": "LSTM",
+            "description": "LSTM with attention",
+            "metrics": all_metrics["lstm"],
+        },
+        "tcn": {
+            "name": "TCN",
+            "description": "Temporal convolutional network",
+            "metrics": all_metrics["tcn"],
+        },
+        "xgboost": {
+            "name": "XGBoost",
+            "description": "Optuna-tuned gradient boosting",
+            "metrics": all_metrics["xgboost"],
+        },
+        "lightgbm": {
+            "name": "LightGBM",
+            "description": "Optuna-tuned leaf-wise gradient boosting",
+            "metrics": all_metrics["lightgbm"],
+        }
     }
 
     # load walk-forward results if available
@@ -390,12 +441,15 @@ def main():
         print(f"Loaded walk-forward results ({walk_forward_data['n_folds']} folds)")
 
     output = {
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "target": "avg_arrival_delay",
         "granularity": "daily_route_level",
         "unit": "minutes",
         "test_period": {"start": TEST_START, "end": TEST_END},
-        "training_period": {"start": df["date"].min().strftime("%Y-%m-%d"), "end": pd.Timestamp(TRAIN_END).strftime("%Y-%m-%d")},
+        "training_period": {
+            "start": df["date"].min().strftime("%Y-%m-%d"),
+            "end": pd.Timestamp(TRAIN_END).strftime("%Y-%m-%d"),
+        },
         "trained_on_routes": total_trained_routes,
         "routes": list(display_merged.keys()),
         "historical": display_historical,

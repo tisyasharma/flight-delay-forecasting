@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -85,13 +85,15 @@ def generate_weather_impact_data(df):
         wx = x - np.average(x, weights=w)
         wy = y - np.average(y, weights=w)
         wcov = np.average(wx * wy, weights=w)
-        corr = wcov / (np.sqrt(np.average(wx**2, weights=w)) * np.sqrt(np.average(wy**2, weights=w)))
+        corr = wcov / (
+            np.sqrt(np.average(wx**2, weights=w)) * np.sqrt(np.average(wy**2, weights=w))
+        )
         correlation[key] = round(float(corr), 3)
 
     return {
         "by_severity": by_severity,
         "correlation": correlation,
-        "generated_at": datetime.now(timezone.utc).isoformat()
+        "generated_at": datetime.now(UTC).isoformat()
     }
 
 
@@ -157,7 +159,7 @@ def generate_carrier_performance_data():
     return {
         "carriers": carriers,
         "date_range": {"start": str(date_start), "end": str(date_end)},
-        "generated_at": datetime.now(timezone.utc).isoformat()
+        "generated_at": datetime.now(UTC).isoformat()
     }
 
 
@@ -186,7 +188,7 @@ def generate_feature_importance_data():
     return {
         "models": models,
         "total_features": total_features,
-        "generated_at": datetime.now(timezone.utc).isoformat()
+        "generated_at": datetime.now(UTC).isoformat()
     }
 
 

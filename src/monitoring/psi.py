@@ -41,8 +41,12 @@ def psi(reference, actual, n_bins=10, epsilon=1e-4):
     edges = quantile_bin_edges(reference, n_bins)
     n_total_bins = len(edges) + 1
 
-    ref_counts = np.bincount(np.searchsorted(edges, reference, side="right"), minlength=n_total_bins)
-    act_counts = np.bincount(np.searchsorted(edges, actual, side="right"), minlength=n_total_bins)
+    ref_counts = np.bincount(
+        np.searchsorted(edges, reference, side="right"), minlength=n_total_bins
+    )
+    act_counts = np.bincount(
+        np.searchsorted(edges, actual, side="right"), minlength=n_total_bins
+    )
 
     ref_prop = (ref_counts + epsilon) / (ref_counts.sum() + epsilon * n_total_bins)
     act_prop = (act_counts + epsilon) / (act_counts.sum() + epsilon * n_total_bins)

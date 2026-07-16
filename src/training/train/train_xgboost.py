@@ -1,5 +1,4 @@
 import argparse
-import json
 from pathlib import Path
 
 import joblib
@@ -8,15 +7,15 @@ import pandas as pd
 import xgboost as xgb
 
 from src import tracking
-from src.config import TRAIN_END, VAL_END, TEST_START, FINAL_TEST_START, TABULAR_FEATURES
+from src.config import FINAL_TEST_START, TABULAR_FEATURES, TEST_START, TRAIN_END, VAL_END
 from src.evaluation.metrics import calculate_delay_metrics
+from src.training.common import load_tuned_params
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 MODELS_DIR = PROJECT_ROOT / "trained_models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
-CONFIGS_DIR = PROJECT_ROOT / "configs"
 
 DEFAULT_PARAMS = {
     "n_estimators": 500,
@@ -26,18 +25,6 @@ DEFAULT_PARAMS = {
     "colsample_bytree": 0.8,
     "min_child_weight": 3,
 }
-
-
-def load_tuned_params():
-    """Loads Optuna best params if available, otherwise returns defaults."""
-    params_path = CONFIGS_DIR / "best_params_xgboost.json"
-    if params_path.exists():
-        with open(params_path) as f:
-            tuned = json.load(f)
-        print(f"Using Optuna-tuned params from {params_path.name}")
-        return tuned
-    print("No tuned params found, using defaults")
-    return DEFAULT_PARAMS.copy()
 
 
 def main():
@@ -61,10 +48,12 @@ def main():
     print(f"{len(df):,} samples, {len(available_features)} features")
 
     train_df = df[df["date"] < TRAIN_END].dropna(subset=available_features + [target_col])
-    val_df = df[(df["date"] >= TRAIN_END) & (df["date"] < VAL_END)].dropna(subset=available_features + [target_col])
+    val_df = df[(df["date"] >= TRAIN_END) & (df["date"] < VAL_END)].dropna(
+        subset=available_features + [target_col]
+    )
 
     # the historical devtest and locked-final-test spans predate the serving
-    # generation's train_end, so they are in-sample now and skipped; the live
+    # generation's train_end, so they are in-sample now and skipped. the live
     # public record is this generation's blind test
     holdouts_valid = pd.Timestamp(TEST_START) >= pd.Timestamp(TRAIN_END)
     devtest_df = df[
@@ -80,7 +69,7 @@ def main():
 
     print(f"train={len(X_train):,}  val={len(X_val):,}  devtest={len(X_devtest):,}")
 
-    xgb_params = load_tuned_params()
+    xgb_params = load_tuned_params("xgboost", DEFAULT_PARAMS)
     xgb_params.update({
         "random_state": 42,
         "n_jobs": -1,
@@ -111,7 +100,9 @@ def main():
         print("historical devtest/final-test spans are inside the training window, skipping")
 
     if args.final_test and holdouts_valid:
-        final_df = df[df["date"] >= FINAL_TEST_START].dropna(subset=available_features + [target_col])
+        final_df = df[df["date"] >= FINAL_TEST_START].dropna(
+            subset=available_features + [target_col]
+        )
         final_metrics = calculate_delay_metrics(
             final_df[target_col].values, model.predict(final_df[available_features].values)
         )

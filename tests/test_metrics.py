@@ -20,6 +20,7 @@ from src.evaluation.metrics import (
     r_squared,
     rmse,
     sort_quantile_predictions,
+    weighted_interval_score,
 )
 
 
@@ -207,7 +208,7 @@ def test_calculate_quantile_metrics_key_naming_rounds():
     expected_keys = {
         "pinball_5", "pinball_50", "pinball_95",
         "below_q5", "below_q50", "below_q95",
-        "coverage_90", "interval_width",
+        "coverage_90", "interval_width", "wis",
     }
     assert set(result) == expected_keys
 
@@ -231,6 +232,54 @@ def test_calculate_quantile_metrics_all_nan_returns_none_dict():
     expected = {
         "pinball_10": None, "pinball_50": None, "pinball_90": None,
         "below_q10": None, "below_q50": None, "below_q90": None,
-        "coverage_80": None, "interval_width": None,
+        "coverage_80": None, "interval_width": None, "wis": None,
     }
     assert calculate_quantile_metrics(y_true, preds) == expected
+
+
+def test_weighted_interval_score_hand_computed():
+    """
+    Single row, y=10 against quantiles (5, 8, 12). The Bracher form gives
+    (0.5 * |10-8| + 0.1 * interval score) / 1.5 with IS = (12-5) = 7 since
+    the actual falls inside, so WIS = 1.7 / 1.5. The pinball identity must
+    produce the same number.
+    """
+    y_true = np.array([10.0])
+    preds = np.array([[5.0, 8.0, 12.0]])
+    assert np.isclose(weighted_interval_score(y_true, preds), 1.7 / 1.5)
+
+
+def test_weighted_interval_score_point_forecast_equals_mae():
+    """A degenerate forecast with all quantiles equal scores its MAE."""
+    y_true = np.array([10.0, 0.0])
+    preds = np.array([[7.0, 7.0, 7.0], [2.0, 2.0, 2.0]])
+    assert np.isclose(weighted_interval_score(y_true, preds), 2.5)
+    assert np.isclose(weighted_interval_score(y_true, preds), mae(y_true, preds[:, 1]))
+
+
+def test_calculate_quantile_metrics_wis_matches_pinball_identity():
+    """The wis key equals twice the mean of the three pinball losses."""
+    y_true = np.arange(10, dtype=float)
+    preds = np.tile([1.0, 4.0, 8.0], (10, 1))
+    result = calculate_quantile_metrics(y_true, preds)
+    pinballs = [result["pinball_10"], result["pinball_50"], result["pinball_90"]]
+    assert np.isclose(result["wis"], 2.0 * np.mean(pinballs))
+
+
+def test_weighted_interval_score_rejects_asymmetric_alphas():
+    """Levels that do not pair to 1.0 break the pinball identity and must raise."""
+    y_true = np.array([10.0])
+    preds = np.array([[5.0, 8.0, 12.0]])
+    with pytest.raises(ValueError):
+        weighted_interval_score(y_true, preds, alphas=(0.1, 0.5, 0.8))
+
+
+def test_calculate_quantile_metrics_wis_none_for_asymmetric_alphas():
+    """Asymmetric levels set wis to None while the pinball keys stay populated."""
+    y_true = np.array([10.0])
+    preds = np.array([[5.0, 8.0, 12.0]])
+    result = calculate_quantile_metrics(y_true, preds, alphas=(0.1, 0.5, 0.8))
+    assert result["wis"] is None
+    assert np.isclose(result["pinball_10"], 0.5)
+    assert np.isclose(result["pinball_50"], 1.0)
+    assert np.isclose(result["pinball_80"], 0.4)

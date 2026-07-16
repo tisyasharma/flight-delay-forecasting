@@ -37,8 +37,12 @@ def _classifier_reliability(fold):
     features = [c for c in TABULAR_FEATURES if c in df.columns]
 
     train = df[df["date"] < fold["train_end"]].dropna(subset=features + [TARGET])
-    val = df[(df["date"] >= fold["train_end"]) & (df["date"] < fold["val_end"])].dropna(subset=features + [TARGET])
-    test = df[(df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])].dropna(subset=features + [TARGET])
+    val = df[(df["date"] >= fold["train_end"]) & (df["date"] < fold["val_end"])].dropna(
+        subset=features + [TARGET]
+    )
+    test = df[(df["date"] >= fold["test_start"]) & (df["date"] < fold["test_end"])].dropna(
+        subset=features + [TARGET]
+    )
 
     clf = lgb.LGBMClassifier(objective="binary", **_base_params())
     clf.fit(train[features].values, (train[TARGET].values > DELAY_THRESHOLD).astype(int),
@@ -85,8 +89,8 @@ def plot_calibration():
 def plot_recursive_degradation():
     """
     How accuracy and coverage decay as the model consumes its own predicted
-    lags. Softer-than-backtest numbers here are expected and are the honest
-    answer to what forward forecasting actually costs.
+    lags. Softer-than-backtest numbers here are expected, they are the price
+    of forward forecasting measured directly.
     """
     IMAGES_DIR.mkdir(exist_ok=True)
     results = json.loads(RECURSIVE_PATH.read_text())

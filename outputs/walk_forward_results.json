@@ -29,157 +29,157 @@
   "models": {
     "naive": {
       "mae": {
-        "mean": 15.09,
-        "std": 1.29,
+        "mean": 15.12,
+        "std": 1.27,
         "folds": [
-          16.17,
-          13.84,
+          16.19,
+          13.86,
           16.57,
-          13.79
+          13.87
         ]
       },
       "rmse": {
-        "mean": 23.92,
-        "std": 2.56,
+        "mean": 23.99,
+        "std": 2.53,
         "folds": [
-          25.84,
-          21.51,
-          27.04,
-          21.28
+          25.94,
+          21.53,
+          27.05,
+          21.44
         ]
       },
       "r2": {
-        "mean": -0.21,
+        "mean": -0.22,
         "std": 0.1,
         "folds": [
-          -0.3,
+          -0.31,
           -0.15,
           -0.32,
-          -0.08
+          -0.09
         ]
       },
       "within_15": {
-        "mean": 67.69,
-        "std": 2.2,
+        "mean": 67.66,
+        "std": 2.14,
         "folds": [
-          65.66,
-          70.36,
-          65.39,
-          69.37
+          65.69,
+          70.28,
+          65.4,
+          69.25
         ]
       },
       "median_ae": {
         "mean": 9.18,
-        "std": 0.65,
+        "std": 0.64,
         "folds": [
-          9.81,
-          8.37,
+          9.79,
+          8.39,
           9.82,
-          8.7
+          8.73
         ]
       }
     },
     "ma": {
       "mae": {
-        "mean": 13.53,
-        "std": 1.21,
+        "mean": 13.55,
+        "std": 1.12,
         "folds": [
-          14.75,
-          12.38,
-          14.73,
-          12.25
+          14.66,
+          12.49,
+          14.69,
+          12.36
         ]
       },
       "rmse": {
         "mean": 20.91,
-        "std": 2.11,
+        "std": 2.03,
         "folds": [
-          22.47,
-          18.87,
-          23.5,
-          18.79
+          22.34,
+          18.97,
+          23.46,
+          18.88
         ]
       },
       "r2": {
         "mean": 0.07,
-        "std": 0.07,
+        "std": 0.06,
         "folds": [
-          0.02,
-          0.12,
-          0.0,
-          0.16
+          0.03,
+          0.11,
+          0.01,
+          0.15
         ]
       },
       "within_15": {
-        "mean": 70.03,
-        "std": 3.28,
+        "mean": 69.84,
+        "std": 2.96,
         "folds": [
-          66.38,
-          73.18,
-          67.14,
-          73.42
+          66.53,
+          72.58,
+          67.25,
+          72.98
         ]
       },
       "median_ae": {
-        "mean": 8.94,
-        "std": 0.84,
+        "mean": 8.99,
+        "std": 0.78,
         "folds": [
-          9.95,
-          8.2,
+          9.93,
+          8.28,
           9.59,
-          8.02
+          8.16
         ]
       }
     },
     "seasonal_naive": {
       "mae": {
-        "mean": 17.24,
-        "std": 1.41,
+        "mean": 17.44,
+        "std": 1.29,
         "folds": [
-          18.6,
-          15.76,
-          18.7,
-          15.9
+          18.59,
+          16.09,
+          18.86,
+          16.22
         ]
       },
       "rmse": {
-        "mean": 27.41,
-        "std": 2.61,
+        "mean": 27.68,
+        "std": 2.4,
         "folds": [
-          29.02,
-          24.72,
-          30.85,
-          25.06
+          29.01,
+          25.27,
+          30.94,
+          25.48
         ]
       },
       "r2": {
-        "mean": -0.59,
-        "std": 0.09,
+        "mean": -0.62,
+        "std": 0.07,
         "folds": [
           -0.64,
-          -0.52,
-          -0.72,
-          -0.49
+          -0.58,
+          -0.73,
+          -0.54
         ]
       },
       "within_15": {
-        "mean": 62.75,
-        "std": 2.73,
+        "mean": 62.2,
+        "std": 2.56,
         "folds": [
-          59.23,
-          65.43,
-          60.94,
-          65.39
+          59.03,
+          64.9,
+          60.33,
+          64.54
         ]
       },
       "median_ae": {
-        "mean": 10.53,
-        "std": 0.94,
+        "mean": 10.71,
+        "std": 0.88,
         "folds": [
-          11.78,
-          9.63,
-          11.1,
-          9.63
+          11.83,
+          9.83,
+          11.29,
+          9.87
         ]
       }
     },
@@ -282,6 +282,16 @@
           4.13,
           5.12,
           4.32
+        ]
+      },
+      "wis": {
+        "mean": 8.87,
+        "std": 0.54,
+        "folds": [
+          9.41,
+          8.22,
+          9.4,
+          8.44
         ]
       },
       "below_q10": {
@@ -619,25 +629,25 @@
       "feature_state": "rebuilt per fold at each fold's train_end",
       "hpo_window": "2022-07-01 to 2023-01-01",
       "params": "configs/best_params_*.json",
-      "git_sha": "7ff910a"
+      "git_sha": "cc2fbac"
     },
     "ma": {
       "feature_state": "rebuilt per fold at each fold's train_end",
       "hpo_window": "2022-07-01 to 2023-01-01",
       "params": "configs/best_params_*.json",
-      "git_sha": "7ff910a"
+      "git_sha": "cc2fbac"
     },
     "seasonal_naive": {
       "feature_state": "rebuilt per fold at each fold's train_end",
       "hpo_window": "2022-07-01 to 2023-01-01",
       "params": "configs/best_params_*.json",
-      "git_sha": "7ff910a"
+      "git_sha": "cc2fbac"
     },
     "climatology_q": {
       "feature_state": "rebuilt per fold at each fold's train_end",
       "hpo_window": "2022-07-01 to 2023-01-01",
       "params": "configs/best_params_*.json",
-      "git_sha": "c3c51ed"
+      "git_sha": "cc2fbac"
     },
     "xgboost": {
       "feature_state": "rebuilt per fold at each fold's train_end",

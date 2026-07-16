@@ -3,7 +3,7 @@ Per-cutoff feature construction for walk-forward evaluation and tuning.
 The canonical features.csv embeds train-window statistics (route stats,
 fill medians) computed at the production cutoff, which postdates earlier
 folds' training windows. Rebuilding the table at each fold's own train_end
-keeps those statistics honest for that fold.
+keeps those statistics limited to what that fold could have known.
 """
 
 from pathlib import Path

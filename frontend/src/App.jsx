@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Navigation from './components/Navigation'
 import Forecasting from './pages/Forecasting'
 import Live from './pages/Live'
+import Monitoring from './pages/Monitoring'
 
 function App() {
   useEffect(() => {
@@ -16,6 +17,7 @@ function App() {
       <Navigation />
       <Routes>
         <Route path="/" element={<Live />} />
+        <Route path="/monitoring" element={<Monitoring />} />
         <Route path="/study" element={<Forecasting />} />
         <Route path="/forecasting" element={<Navigate to="/study" replace />} />
       </Routes>

@@ -16,6 +16,7 @@ function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { pathname } = useLocation()
   const onStudy = pathname.startsWith('/study') || pathname.startsWith('/forecasting')
+  const onMonitoring = pathname.startsWith('/monitoring')
 
   useEffect(() => {
     if (!onStudy) return undefined
@@ -77,10 +78,17 @@ function Navigation() {
         <div className={`nav__links ${menuOpen ? 'nav__links--open' : ''}`}>
           <Link
             to="/"
-            className={!onStudy ? 'nav__link--active' : ''}
+            className={!onStudy && !onMonitoring ? 'nav__link--active' : ''}
             onClick={() => setMenuOpen(false)}
           >
             Live
+          </Link>
+          <Link
+            to="/monitoring"
+            className={onMonitoring ? 'nav__link--active' : ''}
+            onClick={() => setMenuOpen(false)}
+          >
+            Monitoring
           </Link>
           <Link
             to="/study"

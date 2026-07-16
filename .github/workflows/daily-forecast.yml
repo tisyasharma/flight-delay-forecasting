@@ -17,7 +17,9 @@ concurrency:
 jobs:
   forecast:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
+    env:
+      PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
@@ -41,11 +43,14 @@ jobs:
       - name: Run the daily forecast
         run: python -m src.pipelines.daily_forecast
 
+      - name: Grade the logged vintages
+        run: python -m src.evaluation.grade_vintages
+
       - name: Commit the forecast artifacts
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/public/data/live_forecasts.json data/live
+          git add frontend/public/data/live_forecasts.json frontend/public/data/monitoring.json data/live
           if git diff --cached --quiet; then
             echo "nothing to commit"
             exit 0

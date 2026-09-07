@@ -2,13 +2,13 @@
  "vintages": [],
  "by_depth": [],
  "totals": {
-  "logged_rows": 18800,
+  "logged_rows": 19200,
   "graded_rows": 0,
-  "pending_rows": 18800,
+  "pending_rows": 19200,
   "first_vintage": "2026-07-11",
-  "last_vintage": "2026-09-06",
-  "vintage_days": 47
+  "last_vintage": "2026-09-07",
+  "vintage_days": 48
  },
  "actuals_through": "2026-06-30",
- "graded_at": "2026-09-06T13:29:45+00:00"
+ "graded_at": "2026-09-07T15:39:19+00:00"
 }

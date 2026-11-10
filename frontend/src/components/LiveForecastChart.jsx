@@ -3,18 +3,24 @@ import * as d3 from 'd3'
 import { showTooltip, hideTooltip } from '../visualizations/tooltip.js'
 import { extractCityPairs, buildDirectionalRoute, formatCityPairDisplay } from '../utils/routeUtils.js'
 import DirectionToggle from './DirectionToggle.jsx'
+import { isStale, useMinuteClock } from '../utils/freshness.js'
 
+// date-only payload fields (YYYY-MM-DD) parse and format in local time, which round-trips the
+// calendar date exactly and matches the local-time scale, while the one timestamp, generated_at,
+// formats in UTC so it shows the date the daily job ran on
 const parseDate = d3.timeParse('%Y-%m-%d')
 const formatAxisDate = d3.timeFormat('%b %d')
 const formatTooltipDate = d3.timeFormat('%a, %b %d, %Y')
 const formatMetaDate = d3.timeFormat('%b %d, %Y')
 const formatMonthYear = d3.timeFormat('%B %Y')
+const formatIsoDate = d3.utcFormat('%Y-%m-%d')
+const formatUtcMetaDate = d3.utcFormat('%b %d, %Y')
 
 const MODEL_DETAILS = {
   architecture: 'Three LightGBM quantile boosters (q10 / q50 / q90); the median feeds the recursion',
   calibration: 'Interval widening fit per forecast depth on a walk-forward recursion backtest, validated to 90 days',
   features: '80 features: calendar, route statistics, delay lags and rolling stats, daily/hourly weather, aviation weather, hub inbound state',
-  serving: 'Regenerated daily at 09:30 UTC by a scheduled pipeline; a run with incomplete weather coverage publishes nothing'
+  serving: 'Scheduled daily at 09:30 UTC. A run that fails any check, such as incomplete weather coverage or recursion past the validated 90 days, publishes nothing'
 }
 
 function LiveForecastChart({ data, loading, error }) {
@@ -24,6 +30,8 @@ function LiveForecastChart({ data, loading, error }) {
   const [direction, setDirection] = useState('outbound')
   const [showMethodology, setShowMethodology] = useState(false)
   const [containerWidth, setContainerWidth] = useState(0)
+  const nowMs = useMinuteClock()
+  const utcToday = formatIsoDate(new Date(nowMs))
 
   const routes = useMemo(
     () => (data && data.routes ? Object.keys(data.routes).sort() : []),
@@ -70,6 +78,9 @@ function LiveForecastChart({ data, loading, error }) {
       today: parseDate(data.today)
     }
   }, [data, selectedRoute])
+
+  // the run's date reads "Today" only on that UTC date, the calendar the daily job runs on
+  const todayLabel = data && data.today !== utcToday ? 'Run date' : 'Today'
 
   const summary = useMemo(() => {
     if (!series) return null
@@ -200,12 +211,16 @@ function LiveForecastChart({ data, loading, error }) {
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '3,3')
       .attr('opacity', 0.7)
-    g.append('text')
+    const runLabel = g.append('text')
       .attr('x', todayX + 5)
       .attr('y', 12)
       .attr('font-size', '11px')
       .attr('fill', 'var(--text-muted)')
-      .text('Today')
+      .text(todayLabel)
+    // flip the label left of its line when the right margin cannot hold it
+    if (todayX + 5 + runLabel.node().getComputedTextLength() > width + margin.right) {
+      runLabel.attr('x', todayX - 5).attr('text-anchor', 'end')
+    }
 
     const lineActual = d3.line()
       .defined(d => d.actual != null)
@@ -337,13 +352,13 @@ function LiveForecastChart({ data, loading, error }) {
       .attr('fill', 'var(--text-muted)')
       .text('Avg arrival delay (min)')
 
-  }, [series, containerWidth])
+  }, [series, containerWidth, todayLabel])
 
   if (loading) {
     return (
       <section id="live-forecast" className="section section--alt">
         <div className="container">
-          <p className="kicker">Daily Forecast</p>
+          <p className="kicker">Route Forecast</p>
           <h2>Seven-Day Route Outlook</h2>
           <div className="viz-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
             Loading live forecasts...
@@ -357,7 +372,7 @@ function LiveForecastChart({ data, loading, error }) {
     return (
       <section id="live-forecast" className="section section--alt">
         <div className="container">
-          <p className="kicker">Daily Forecast</p>
+          <p className="kicker">Route Forecast</p>
           <h2>Seven-Day Route Outlook</h2>
           <div className="viz-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', color: 'var(--red)' }}>
             {error || 'Live forecasts are not available right now.'}
@@ -371,26 +386,25 @@ function LiveForecastChart({ data, loading, error }) {
   const horizonDate = parseDate(data.horizon_end)
   const todayDate = parseDate(data.today)
   const generatedAt = new Date(data.generated_at)
-  const hoursSinceUpdate = (Date.now() - generatedAt.getTime()) / 36e5
-  const stale = hoursSinceUpdate > 48
+  const stale = isStale(generatedAt, nowMs)
 
   return (
     <section id="live-forecast" className="section section--alt">
       <div className="container" data-aos="fade-up">
-        <p className="kicker">Daily Forecast</p>
+        <p className="kicker">Route Forecast</p>
         <h2>Seven-Day Route Outlook</h2>
         <p style={{ marginBottom: 'var(--space-sm)' }}>
           Observed average arrival delay is shown in green through {formatMetaDate(lastActualDate)},
-          the most recent month published by the Bureau of Transportation Statistics. Forecasts
+          the last day of Bureau of Transportation Statistics actuals available to this run. Forecasts
           continue in dashed blue through {formatMetaDate(horizonDate)}, with the shaded band
           covering the 80% prediction interval.
         </p>
         <p style={{ marginBottom: 'var(--space-md)' }}>
-          The red line marks the last published actual. To the right of it the model has no
+          The red line marks the last actual available to this run. To the right of it the model has no
           observed delay history to draw on, so its lag features are rolled forward from its own
           prior predictions one day at a time, and days beyond the weather archive run on
           forecast weather rather than observations. Left of the line, the dashed overlay
-          replays the last published month from
+          replays the last month of actuals available to this run from
           a {data ? formatMetaDate(parseDate(data.verification_origin)) : 'month-end'} start
           with the same engine and offsets. Its delay features roll forward from the model's own
           predictions exactly as they do live, but its weather comes from the settled archive,
@@ -450,8 +464,9 @@ function LiveForecastChart({ data, loading, error }) {
             borderRadius: '6px', padding: '10px 14px',
             marginBottom: 'var(--space-md)', fontSize: '13px'
           }}>
-            Forecasts were last updated {Math.floor(hoursSinceUpdate)} hours ago. The daily
-            refresh has not published since; the values below are the most recent available.
+            These forecasts are the last published run, from {formatUtcMetaDate(generatedAt)}, built
+            from actuals through {formatMetaDate(lastActualDate)}. No newer run has been published
+            since.
           </div>
         )}
 
@@ -497,7 +512,7 @@ function LiveForecastChart({ data, loading, error }) {
                 </div>
                 <div className="legend-item">
                   <svg width="20" height="10"><line x1="10" y1="0" x2="10" y2="10" stroke="var(--text-muted)" strokeWidth="1.5" strokeDasharray="2,2"/></svg>
-                  <span>Today</span>
+                  <span>{todayLabel}</span>
                 </div>
               </div>
             </div>
@@ -568,7 +583,7 @@ function LiveForecastChart({ data, loading, error }) {
                   <div className="forecast-summary-metrics">
                     <div className="metric-row">
                       <span className="metric-row__label">Updated</span>
-                      <span className="metric-row__value">{formatMetaDate(generatedAt)}</span>
+                      <span className="metric-row__value">{formatUtcMetaDate(generatedAt)}</span>
                     </div>
                     <div className="metric-row">
                       <span className="metric-row__label">Actuals through</span>
@@ -588,9 +603,9 @@ function LiveForecastChart({ data, loading, error }) {
         </div>
 
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: 'var(--space-md)' }}>
-          Each morning's forecasts are appended to a versioned log before any outcome is known,
-          and past entries are never revised. Once BTS publishes a month of actuals, every
-          forecast for those dates can be scored against them.
+          Every published run's forecasts are appended to a versioned log before any outcome is
+          known, and past entries are never revised. Each successful run of the daily job also
+          grades every logged forecast whose date has BTS actuals in the repo.
         </p>
       </div>
     </section>

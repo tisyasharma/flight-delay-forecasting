@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Hero from '../components/Hero'
 import Footer from '../components/Footer'
 import { assetUrl } from '../utils/helpers.js'
+import { isStale, useMinuteClock } from '../utils/freshness.js'
 
 const INCIDENT_URL =
   'https://github.com/tisyasharma/flight-delay-forecasting/blob/main/docs/incidents/2024-12-openmeteo-wind-seam.md'
@@ -70,22 +71,27 @@ function DepthTable({ rows }) {
 function Monitoring() {
   const report = useJson('data/monitoring.json')
   const live = useJson('data/live_forecasts.json')
-  const replay = replayStats(live)
+  const replay = useMemo(() => replayStats(live), [live])
 
   const totals = report && report.totals
   const graded = totals && totals.graded_rows > 0
+  const nowMs = useMinuteClock()
+  // grading only runs inside the daily job, so a grader timestamp this old means the job stopped short of it
+  const gradingPaused = Boolean(report && report.graded_at) &&
+    isStale(new Date(report.graded_at), nowMs)
 
   return (
     <>
       <Hero
         kicker="Monitoring"
-        title="Forecasts, Graded in Public"
+        title="Forecast Log and Grading"
         subtitle={<>
           <span style={{ display: 'block', marginBottom: 'var(--space-md)' }}>
-            Every morning's forecasts are appended to a log before any outcome is
-            known, and past entries are never revised. When BTS publishes a month
-            of actuals, everything logged for those dates gets scored here,
-            exactly as issued.
+            Each published run appends its forecasts to a log before any outcome
+            is known, and past entries are never revised. Each successful run of
+            the daily job grades everything logged for dates whose BTS actuals are
+            in the repo, exactly as issued.
+            {totals && totals.last_vintage && <> The most recent run logged is {totals.last_vintage}.</>}
           </span>
           <span style={{ display: 'block' }}>
             The wait between forecast and verdict is the project's defining
@@ -99,28 +105,34 @@ function Monitoring() {
         <div className="container">
           <p className="kicker">The Record</p>
           <h2>What the log holds</h2>
-          {!report && <p>The grading report is not available right now.</p>}
-          {report && (
+          {!totals && <p>The grading report is not available right now.</p>}
+          {totals && (
             <div className="viz-card" style={{ height: 'auto', padding: 'var(--space-lg)' }}>
               <div className="forecast-summary-metrics" style={{ maxWidth: 520 }}>
                 <StatRow label="Forecasts logged" value={totals.logged_rows.toLocaleString()} />
                 <StatRow label="Vintage days" value={totals.vintage_days} />
                 <StatRow label="Logging since" value={totals.first_vintage || '-'} />
                 <StatRow label="Graded against actuals" value={totals.graded_rows.toLocaleString()} />
-                <StatRow label="Awaiting publication" value={totals.pending_rows.toLocaleString()} />
-                <StatRow label="Actuals published through" value={report.actuals_through} />
+                <StatRow label="Awaiting actuals" value={totals.pending_rows.toLocaleString()} />
+                <StatRow label="Actuals through" value={report.actuals_through} />
+                <StatRow label="Grader last ran" value={report.graded_at ? report.graded_at.slice(0, 10) : '-'} />
               </div>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: 'var(--space-sm)' }}>
+                All figures are as of the grader's last run.
+                {gradingPaused && ' Grading is a step of the daily job, and no run has reached that step since then.'}
+              </p>
             </div>
           )}
 
-          {report && !graded && (
+          {totals && !graded && totals.first_vintage && report.actuals_through && (
             <p style={{ marginTop: 'var(--space-md)', maxWidth: 720 }}>
-              Nothing is gradeable yet, and that is the expected state rather
-              than a gap: logging began on {totals.first_vintage}, BTS actuals
-              currently end at {report.actuals_through}, and the first logged
-              dates become scorable when BTS publishes their month, one to two
-              months after the fact. Until then the replay below shows what
-              grading will look like.
+              Nothing has been graded yet. Logging began on {totals.first_vintage},
+              and when the grader last ran the actuals ended at {report.actuals_through}
+              {report.actuals_through < totals.first_vintage ? ', before the first logged date' : ''}.
+              Scoring needs BTS actuals for the logged
+              dates in the repo and a successful run of the daily job, whose grading
+              step does the scoring.
+              {replay && ' Until then, the replay below shows what grading will look like.'}
             </p>
           )}
 
@@ -131,8 +143,8 @@ function Monitoring() {
                 <DepthTable rows={report.by_depth} />
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: 'var(--space-sm)' }}>
-                Scores are recomputed against the latest BTS revision on every
-                run. The persistence column carries each vintage's last known
+                Scores are recomputed against the BTS actuals in the repo on
+                every successful run. The persistence column carries each vintage's last known
                 actual forward, the same comparator the recursion backtest
                 reports.
               </p>
@@ -146,8 +158,8 @@ function Monitoring() {
           <p className="kicker">Proof of Concept</p>
           <h2>What grading looks like</h2>
           <p style={{ maxWidth: 720 }}>
-            The daily payload replays the last published month from the prior
-            month's end with the same engine and offsets, so the grading
+            The payload from the last published run replays its last month of
+            actuals from the prior month's end with the same engine and offsets, so the grading
             machinery already runs against known outcomes. Its weather comes
             from the settled archive, which a true month-end run would not have
             had, so these numbers read as a favorable bound.

@@ -45,6 +45,9 @@ function Forecasting() {
           <span style={{ display: 'block' }}>
             This project explores whether machine learning can forecast tomorrow's average arrival delay for a given route, providing airlines and airports with early warning signals to manage downstream disruptions.
           </span>
+          <span style={{ display: 'block', marginTop: 'var(--space-md)' }}>
+            The results on this page are from the February 2026 study. The model comparison section explains how its evaluation differs from the July 2026 re-evaluation behind the published benchmark.
+          </span>
         </>}
       />
 

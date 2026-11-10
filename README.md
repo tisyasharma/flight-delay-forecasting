@@ -5,6 +5,15 @@
 Python, pandas, LightGBM, XGBoost, PyTorch, Optuna, MLflow, conformalized
 quantile regression, pytest, React, D3, GitHub Actions.
 
+**Status:** the daily job last published on 2026-09-21. That run forecast
+2026-09-21 through 2026-09-28, the run date plus seven days, rolled forward
+from BTS actuals through 2026-06-30. BTS has since published July and August
+2026, but the repo's monthly refresh has not run since it added June. Every run
+since 2026-09-22 has refused to serve, because reaching seven days ahead would
+need recursion deeper than the 90 days the backtest validates. Grading runs inside
+the same job, so it is paused too. The dashboard shows the 2026-09-21 run until
+serving resumes.
+
 Most days the 50 busiest US routes run close to schedule. Some days a storm
 parks over a hub and pushes a route's average delay past an hour. Airlines pad
 block times, position reserve crews, and plan ground delay programs around
@@ -14,23 +23,29 @@ Statistics (BTS) publishes flight actuals one to two months late, so the delay
 history a forecaster needs always ends weeks in the past, while the weather
 driving tomorrow's delays updates every morning.
 
-This system forecasts through that gap, live. Every morning it publishes
-seven-day forecasts of average arrival delay, with calibrated 80% intervals,
-for all 50 routes. The last published actual is five to ten weeks old, so
-reaching seven days out takes roughly 45 to 80 recursive steps, all inside the
-90 the backtest validates: the engine feeds its own predictions back in as the
-recent-delay history its features expect, and rewidens the intervals at every
-depth because uncertainty compounds when a model consumes its own output.
-Every forecast is logged before the outcome is knowable and graded in public
-as BTS catches up.
+This system forecasts through that gap. On each day it serves, the daily job
+publishes seven-day forecasts of average arrival delay, with calibrated 80%
+intervals, for all 50 routes. Every day between the last actual and the end of the
+horizon is one recursive step: the engine feeds its own predictions back in as
+the recent-delay history its features expect, and rewidens the intervals at
+every depth because uncertainty compounds when a model consumes its own output.
+The depth therefore depends on how recent the repo's actuals are, and BTS's
+release timing sets how recent they can be. The backtest validates depths
+through 90, and BTS's release timing can push the depth past that even when the
+monthly refresh keeps pace, in which case the daily job refuses to serve rather
+than forecast deeper. Every forecast is logged before its outcome is
+knowable, and each successful run of the daily job grades the logged forecasts
+whose dates have BTS actuals in the repo.
 
-**[Live dashboard](https://tisyasharma.github.io/flight-delay-forecasting/)**
+**[Dashboard](https://tisyasharma.github.io/flight-delay-forecasting/)**
 
-![Live dashboard](images/dashboard.png)
+![Dashboard, 2026-07-11 run](images/dashboard.png)
 
-The production loop is one GitHub Actions job. Every morning it pulls fresh
-weather forecasts, loads the three LightGBM quantile boosters, walks the
-forecast out day by day from the last published actual to seven days from now,
+*Screenshot of the 2026-07-11 run, built from actuals through 2026-05-31.*
+
+The production loop is one GitHub Actions job, scheduled each morning. A run
+pulls fresh weather forecasts, loads the three LightGBM quantile boosters, walks the
+forecast out day by day from the last actual in the repo to seven days from now,
 then republishes the React dashboard above and appends the run to the
 append-only prediction log.
 
@@ -65,7 +80,7 @@ delay lags are available, which is only true one step ahead, so the recursion
 backtest re-scores the engine under serving conditions, where every lag past
 the origin comes from the model's own predictions. MAE runs 10.7 one day deep,
 peaks near 12 after two weeks of recursion, and holds below that peak through
-ninety days, while simply carrying the last published actual forward decays
+ninety days, while simply carrying the last actual at the origin forward rises
 from 15.1 to 22.0. The cost shows up in the intervals instead: raw coverage
 falls from 74% to 62% as the recursion deepens, and the per-depth widening
 amounts, fit on three folds and checked on a fourth they never touched, bring
@@ -122,12 +137,12 @@ address that spread, adaptive conformal inference would address drift, and both
 are documented non-goals. The depth
 backtest uses observed weather across the horizon, while the live loop runs on
 forecast weather for future days, so live accuracy is expected to land somewhat
-worse. The prediction log measures that gap as actuals arrive.
+worse. Grading the prediction log against actuals measures that gap.
 
 ## Data
 
 Flights come from the [BTS On-Time Performance](https://www.transtats.bts.gov/)
-table, January 2019 through May 2026, public domain. Weather comes from
+table, January 2019 through June 2026, public domain. Weather comes from
 [Open-Meteo](https://open-meteo.com/), with the historical archive pinned to
 `era5` and aviation variables from the historical-forecast API pinned to
 `gfs_seamless`. Weather data by Open-Meteo.com,

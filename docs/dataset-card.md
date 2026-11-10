@@ -14,21 +14,21 @@
   - Open-Meteo historical weather archive, `models=era5` pinned (`src/training/fetch_weather_data.py`): hourly temperature, precipitation, snowfall, wind speed, wind gusts, and weather code for the 23 airports, aggregated to daily and operating-hour metrics (`data/weather/weather_daily.csv`, `data/weather/weather_hourly_agg.csv`). CC BY 4.0.
   - Open-Meteo historical-forecast API, `models=gfs_seamless` pinned (`src/weather/gfs_history.py`): hourly visibility, CAPE, lifted index, low cloud cover, weather code, gusts, wind speed, and freezing-level height, aggregated per airport-day (`data/weather/aviation_daily.csv`). Pinning matches the live forecast API that serves the same variables, so training happens on archived forecasts rather than reanalysis and a live consumer would see a consistent distribution. CC BY 4.0.
 - Derived state (not an external source): the hub inbound-delay features (`hub_inbound_lag_1`, `hub_inbound_roll_7`) are computed inside the feature pipeline (`add_hub_features` in `src/build_features.py`) as the prior-day and trailing-7-day average arrival delay over the *modeled routes* into each destination airport. Modeled-routes-only by design, so a live pipeline can rebuild it from rolled-forward predictions with no extra data source. A separate all-inbound aggregate (`data/processed/hub_inbound_daily.csv`, every BTS arrival per destination) appears only as a backtest-only upper-bound variant in the ablation, never in the served features.
-- Collection period: 2019-01-01 through 2026-05-31 (extended as BTS publishes, by a manual monthly refresh)
+- Collection period: 2019-01-01 through 2026-06-30 (extended month by month through a manual refresh after BTS publishes)
 - Rights / permissions: BTS data is public domain. Open-Meteo data is CC BY 4.0 (attribution in the README). Both permit redistribution of the derived tables tracked in this repo.
 - Included / excluded populations: the 50 busiest directional US routes by total flights (frozen set, encoded in `feature_state.json`). All other routes and airports are out of scope. Cancelled flights contribute to cancellation counts but not to delay averages.
 
 ## Structure
 
-- Rows / entities: 135,400 rows = 50 routes x 2,708 days, one row per route per calendar day
+- Rows / entities: 136,900 rows = 50 routes x 2,738 days, one row per route per calendar day
 - Features: 119 columns. The 80 model features are defined in `src/features/registry.py` (calendar, COVID period flags, route statistics, delay lags/rolling stats, daily and hourly weather, aviation weather, hub inbound-delay state)
 - Target label: `avg_arr_delay` (mean arrival delay in minutes over the route's flights that day, from BTS `ARR_DELAY`)
 - Weather severity scale: WMO condition codes map to a 0-5 score (clear 0 to thunderstorm 5, `src/weather/common.py`). A severe-weather day in the model card means the route's worse airport scored 3 or higher
 - Missingness / fill semantics (all train-window gated, serialized in `feature_state.json`):
-  - calendar gaps are completed to one row per route-day, target forward-filled up to 7 days then zero (`fill_missing_dates` in `src/process.py`), the convention the models were trained on. 40 route-days (0.03% of the table) carry such a filled label, and they stay in training and evaluation, a share too small to move any reported number
+  - calendar gaps are completed to one row per route-day, target forward-filled up to 7 days then zero (`fill_missing_dates` in `src/process.py`), the convention the models were trained on. 40 route-days have no flights and carry such a filled label, 23 of them zero. Another 68 route-days had flights but none arrived with a recorded delay, 67 because every flight was cancelled and one because the only flight not cancelled was diverted, and the same forward fill gives them the previous day's value. All 108 (0.08% of the table) stay in training and evaluation
   - route statistics and lag-fill medians come from the training window only
   - temperature gaps take train-window medians. Visibility takes the train-window median (zero would mean fog, the opposite of missing). Precipitation, rain, and snowfall fill to zero at processing time, a null weather code reads as clear, and the convective, gust, cloud, and freezing-rain columns default to the same benign zero in the feature builder
-- Known duplicates or joins: no duplicate route-day keys can survive, the calendar-shape gate in `src/data_checks.py` enforces exactly one row per route per day. Weather joins on airport-date (origin as `apt1_`, destination as `apt2_`), and hub state joins on destination airport-date, lagged one day
+- Known duplicates or joins: the tracked table has no duplicate route-day keys. The calendar-shape gate in `src/data_checks.py` checks the row count against 50 routes times the number of days, which on its own would not catch a duplicate paired with a missing day. Weather joins on airport-date (origin as `apt1_`, destination as `apt2_`), and hub state joins on destination airport-date, lagged one day
 
 ## Labeling
 

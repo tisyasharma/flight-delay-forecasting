@@ -30,7 +30,7 @@ function Methods() {
     },
     {
       title: 'Data Continuity',
-      content: 'Days with zero flights are forward-filled up to seven days to preserve continuity in lag calculations. A strictly chronological split divides the data into training (January 2019 through December 2023), validation (January through June 2024), and test (July 2024 through June 2025) periods to prevent future data leakage. All aggregate statistics used for encoding and imputation are computed exclusively from the training period.'
+      content: 'Days on which no flight on a route arrived with a recorded delay, because there were no flights or every flight was cancelled or diverted, carry the previous day\'s delay for up to seven days and zero after that, which preserves continuity in lag calculations. A strictly chronological split divides the data into training (January 2019 through December 2023), validation (January through June 2024), and test (July 2024 through June 2025) periods to prevent future data leakage. All aggregate statistics used for encoding and imputation are computed exclusively from the training period.'
     },
     {
       title: 'Forecasting Models',
@@ -50,7 +50,7 @@ function Methods() {
     },
     {
       title: 'Validation Strategy',
-      content: 'In addition to evaluation on the held-out test period, a four-fold walk-forward validation is performed using expanding training windows and six-month test periods from January 2023 through December 2024. This provides confidence that reported performance reflects consistent behavior over time rather than a favorable single split.'
+      content: 'In addition to evaluation on the held-out test period, a four-fold walk-forward validation is performed using expanding training windows and six-month test periods from January 2023 through December 2024. The folds reused the single split\'s feature statistics and hyperparameters, so three of the four overlap data that informed them, as the note under Model Comparison explains.'
     }
   ]
 

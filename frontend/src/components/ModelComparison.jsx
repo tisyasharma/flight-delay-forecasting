@@ -1,6 +1,11 @@
 import { useMemo } from 'react'
 import { MODEL_COLORS } from '../utils/constants.js'
 
+const BENCHMARK_URL =
+  'https://github.com/tisyasharma/flight-delay-forecasting/blob/main/docs/model-card.md#evaluation'
+const ABLATION_URL =
+  'https://github.com/tisyasharma/flight-delay-forecasting/blob/main/outputs/ablation.json'
+
 function ModelComparison({ forecastData, loading, error }) {
   const modelResults = useMemo(() => {
     if (!forecastData?.walk_forward?.models) return []
@@ -136,7 +141,7 @@ function ModelComparison({ forecastData, loading, error }) {
         <p className="kicker">Performance</p>
         <h2>Model Comparison</h2>
         <p style={{ marginBottom: 'var(--space-xl)' }}>
-          Four modeling approaches are evaluated for next-day route-level delay forecasting using walk-forward validation (2023-2024). The comparison covers two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN). Performance is assessed using MAE and hit rate, defined as the share of daily forecasts within ±15 minutes of the observed delay. Metrics are aggregated across all 50 training routes.
+          These results are from the February 2026 study. Four modeling approaches are evaluated for next-day route-level delay forecasting using walk-forward validation (2023-2024). The comparison covers two gradient boosting models (XGBoost, LightGBM) and two deep learning models (LSTM, TCN). Performance is assessed using MAE and hit rate, defined as the share of daily forecasts within ±15 minutes of the observed delay. Metrics are aggregated across all 50 training routes.
         </p>
 
         <div className="viz-card model-comparison-card" style={{ height: 'auto', padding: 0 }}>
@@ -200,6 +205,23 @@ function ModelComparison({ forecastData, loading, error }) {
             <p>In ablation testing, gradient boosting without weather features still outperformed deep learning trained on its complete sequence feature set (12.69 min MAE). Weather features alone accounted for a 10.3% improvement in XGBoost performance.</p>
           </div>
         </div>
+
+        {/* figures come from the frozen delay_forecasts.json, outputs/ablation.json, and outputs/walk_forward_results.json */}
+        <p style={{ marginTop: 'var(--space-lg)', fontSize: '13px', color: 'var(--text-muted)' }}>
+          The February 2026 study computed its feature statistics once, with a 2024-01-01 cutoff, and
+          selected hyperparameters on a January to June 2024 validation window. Both overlap its test
+          folds: the statistics include the targets of the two 2023 folds, and the validation window
+          is the January to June 2024 fold. A July 2026 re-evaluation on the same four folds rebuilt
+          feature statistics at each fold's training cutoff and selected hyperparameters on July to
+          December 2022, before every test fold. On the study's 63 features, with hyperparameters
+          tuned for the full 80-feature set, LightGBM scores 11.27 min MAE there, against the study's
+          11.25. On the full 80-feature set, LightGBM scores 11.05,
+          XGBoost 11.16, and the LightGBM quantile model's next-day median 10.80, against 15.12 for the
+          naive baseline (
+          <a href={BENCHMARK_URL} target="_blank" rel="noopener noreferrer">model card</a>,{' '}
+          <a href={ABLATION_URL} target="_blank" rel="noopener noreferrer">ablation results</a>).
+          LSTM and TCN were not re-run under the corrected protocol.
+        </p>
       </div>
     </section>
   )

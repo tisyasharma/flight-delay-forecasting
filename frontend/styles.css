@@ -505,16 +505,33 @@ label {
   color: var(--text-muted);
 }
 
-.notes-list a {
+.notes-list a,
+.weather-credit a {
   color: var(--text-secondary);
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: color 0.2s ease, border-color 0.2s ease;
 }
 
-.notes-list a:hover {
+.notes-list a:hover,
+.weather-credit a:hover {
   color: var(--text-primary);
   border-bottom-color: var(--gray-400);
+}
+
+/* the credit sits inside running text, so its links keep an underline at rest */
+.weather-credit a {
+  border-bottom-color: var(--gray-500);
+}
+
+.weather-credit a:hover {
+  border-bottom-color: var(--gray-600);
+}
+
+.weather-credit-caption {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: calc(-1 * var(--space-md)) 0 var(--space-lg);
 }
 
 sup a[href^="#ref-"] {

@@ -6,7 +6,7 @@ function References() {
 
         <ol className="notes-list">
           <li id="ref-1">
-            Open-Meteo, "Historical Weather API: ERA5 Reanalysis" (Open-Meteo, n.d.),{' '}
+            Open-Meteo, "Historical Weather API" (Open-Meteo.com, n.d.),{' '}
             <a href="https://open-meteo.com/en/docs/historical-weather-api" target="_blank" rel="noopener noreferrer">
               https://open-meteo.com/en/docs/historical-weather-api
             </a>
@@ -21,9 +21,9 @@ function References() {
             .
           </li>
           <li id="ref-3">
-            Chen, H. et al., "Flight Delay Prediction Based on Deep Learning: A Systematic Review and Meta-analysis,"
-            International Journal of Computational Intelligence Systems 18, 68 (2025),{' '}
-            <a href="https://link.springer.com/article/10.1007/s44196-025-00932-2" target="_blank" rel="noopener noreferrer">
+            Zhong, Q. et al., "Prediction and Optimization of Civil Aviation Flight Delays Based on Machine Learning
+            Algorithms," International Journal of Computational Intelligence Systems 18, 189 (2025),{' '}
+            <a href="https://doi.org/10.1007/s44196-025-00932-2" target="_blank" rel="noopener noreferrer">
               https://doi.org/10.1007/s44196-025-00932-2
             </a>
             .
@@ -33,22 +33,6 @@ function References() {
             the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (2019): 2623-2631,{' '}
             <a href="https://doi.org/10.1145/3292500.3330701" target="_blank" rel="noopener noreferrer">
               https://doi.org/10.1145/3292500.3330701
-            </a>
-            .
-          </li>
-          <li id="ref-5">
-            Li, S. et al., "A Review of Research on Flight Delay Propagation: Current Situation and Prospect,"
-            Journal of Advanced Transportation (2025),{' '}
-            <a href="https://onlinelibrary.wiley.com/doi/full/10.1155/atr/4851103" target="_blank" rel="noopener noreferrer">
-              https://doi.org/10.1155/atr/4851103
-            </a>
-            .
-          </li>
-          <li id="ref-6">
-            Wang, Z. et al., "Predicting flight arrival times with deep learning: A strategy for minimizing
-            potential conflicts in gate assignment," Transportation Research Part C: Emerging Technologies (2024),{' '}
-            <a href="https://www.sciencedirect.com/science/article/abs/pii/S0968090X24003875" target="_blank" rel="noopener noreferrer">
-              https://doi.org/10.1016/j.trc.2024.104876
             </a>
             .
           </li>

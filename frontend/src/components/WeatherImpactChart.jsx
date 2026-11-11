@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { assetUrl } from '../utils/helpers.js'
+import WeatherCredit from './WeatherCredit'
 
 
 const delayColorScale = d3.scaleLinear()
@@ -395,6 +396,9 @@ function WeatherImpactChart() {
         <h2>Weather Impact on Delays</h2>
         <p style={{ marginBottom: 'var(--space-lg)' }}>
           Weather conditions are strongly associated with arrival delays in our dataset. In an ablation study, adding weather features improved XGBoost forecast error by 10.3% (MAE), making weather the most impactful feature group by MAE reduction among those tested. The data below aggregates weather conditions and arrival delays across 50 major U.S. domestic routes from January 2019 through June 2025.<sup><a href="#ref-1">1</a></sup><sup><a href="#ref-2">2</a></sup> We encoded 28 weather features, aggregating hourly observations into daily operating-hour metrics such as peak wind, storm-hour counts, and departure- and arrival-period conditions.
+        </p>
+        <p className="weather-credit-caption">
+          <WeatherCredit />
         </p>
 
         <div className="viz-card" style={{ height: 'auto', padding: 0 }}>
